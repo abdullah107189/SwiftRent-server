@@ -24,6 +24,24 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const database = client.db("SwiftRent-DB");
+    const userInfoCollection = database.collection("usersInfo");
+
+    //Users related api
+    app.post("/add-user", async (req, res) => {
+      const user = req.body;
+      console.log("user", user);
+
+      // Insert email if user doesn't exists:
+      const query = { email: user.email };
+      const existingUser = await userInfoCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "User already exists", insertedId: null });
+      }
+      const result = await userInfoCollection.insertOne(user);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -31,7 +49,7 @@ async function run() {
     );
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
