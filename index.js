@@ -26,17 +26,21 @@ async function run() {
     await client.connect();
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
-    app.post("/add-user", async (req, res) => {
-      const { email, ...userInfo } = req.body;
-      console.log("userinfo", userInfo);
 
-      const existingUser = await userInfoCollection.findOne({ email });
+
+    //Users related api
+    app.post("/add-user", async (req, res) => {
+      const user = req.body;
+      console.log("user", user);
+
+      // Insert email if user doesn't exists:
+      const query = { email: user.email };
+      const existingUser = await userInfoCollection.findOne(query);
       if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
+        return res.send({ message: "User already exists", insertedId: null });
       }
-      const result = await userInfoCollection.insertOne(userInfo);
-      console.log("result", result);
-      res.status(201).send(result);
+      const result = await userInfoCollection.insertOne(user);
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
