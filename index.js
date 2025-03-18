@@ -27,6 +27,7 @@ async function run() {
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
 
+
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
