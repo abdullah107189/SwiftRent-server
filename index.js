@@ -26,7 +26,7 @@ async function run() {
     await client.connect();
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
-
+    const carsCollection = database.collection("cars");
 
     //Users related api
     app.post("/add-user", async (req, res) => {
@@ -41,6 +41,16 @@ async function run() {
       }
       const result = await userInfoCollection.insertOne(user);
       res.send(result);
+    });
+
+    // cars related apis
+    app.get("/cars", async (req, res) => {
+      try {
+        const cars = await carsCollection.find().toArray();
+        return res.send(cars);
+      } catch (error) {
+        res.json({ message: "Failed to fetch cars", error });
+      }
     });
 
     // Send a ping to confirm a successful connection
