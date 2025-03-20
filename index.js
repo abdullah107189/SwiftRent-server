@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+const moment = require("moment-timezone");
 const app = express();
 const port = 3000;
 const cors = require("cors");
@@ -26,21 +27,43 @@ async function run() {
     await client.connect();
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
-
+    const carsCollection = database.collection("cars");
 
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
-      console.log("user", user);
 
-      // Insert email if user doesn't exists:
+      // Check if the user already exists
       const query = { email: user.email };
       const existingUser = await userInfoCollection.findOne(query);
+
       if (existingUser) {
-        return res.send({ message: "User already exists", insertedId: null });
+        return res.send({ message: "User already exists" });
       }
-      const result = await userInfoCollection.insertOne(user);
+      // New User Data with Additional Fields
+      const newUser = {
+        email: user.email,
+        name: user.name,
+        creationDate: moment
+          .utc("2025-03-20T07:51:31.978Z")
+          .tz("Asia/Dhaka")
+          .format("YYYY-MM-DD hh:mm:ss A"),
+        role: "user",
+        isActive: true,
+        lastLogin: null,
+      };
+      console.log(newUser);
+      const result = await userInfoCollection.insertOne(newUser);
       res.send(result);
+    });
+
+    app.get("/cars", async (req, res) => {
+      try {
+        const cars = await carsCollection.find().toArray();
+        console.log(cars);
+      } catch (error) {
+        res.json({ message: "Failed to fetch cars", error });
+      }
     });
 
     // Send a ping to confirm a successful connection
