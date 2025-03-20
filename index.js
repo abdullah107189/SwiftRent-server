@@ -57,10 +57,11 @@ async function run() {
       res.send(result);
     });
 
+    // cars related apis
     app.get("/cars", async (req, res) => {
       try {
         const cars = await carsCollection.find().toArray();
-        console.log(cars);
+        return res.send(cars);
       } catch (error) {
         res.json({ message: "Failed to fetch cars", error });
       }
