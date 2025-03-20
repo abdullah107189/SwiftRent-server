@@ -32,11 +32,8 @@ async function run() {
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
-
-      // Check if the user already exists
       const query = { email: user.email };
       const existingUser = await userInfoCollection.findOne(query);
-
       if (existingUser) {
         return res.send({ message: "User already exists" });
       }
@@ -45,14 +42,13 @@ async function run() {
         email: user.email,
         name: user.name,
         creationDate: moment
-          .utc("2025-03-20T07:51:31.978Z")
+          .utc()
           .tz("Asia/Dhaka")
           .format("YYYY-MM-DD hh:mm:ss A"),
         role: "user",
         isActive: true,
         lastLogin: null,
       };
-      console.log(newUser);
       const result = await userInfoCollection.insertOne(newUser);
       res.send(result);
     });
@@ -63,7 +59,34 @@ async function run() {
         const cars = await carsCollection.find().toArray();
         return res.send(cars);
       } catch (error) {
-        res.json({ message: "Failed to fetch cars", error });
+        res.send({ message: "Failed to fetch cars", error });
+      }
+    });
+
+    app.patch("/update-last-login", async (req, res) => {
+      try {
+        const { email } = req.body;
+        // Update lastLogin field
+        const result = await userInfoCollection.updateOne(
+          { email },
+          {
+            $set: {
+              lastLogin: moment
+                .utc()
+                .tz("Asia/Dhaka")
+                .format("YYYY-MM-DD hh:mm:ss A"),
+            },
+          }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        console.log(result);
+        res.send({ message: "Last login updated successfully" });
+      } catch (error) {
+        console.error("Error updating last login:", error);
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
