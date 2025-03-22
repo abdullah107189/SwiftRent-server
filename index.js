@@ -44,10 +44,7 @@ async function run() {
       const newUser = {
         email: user.email,
         name: user.name,
-        creationDate: moment
-          .utc("2025-03-20T07:51:31.978Z")
-          .tz("Asia/Dhaka")
-          .format("YYYY-MM-DD hh:mm:ss A"),
+        creationDate: moment().tz("Asia/Dhaka").format("YYYY-MM-DD hh:mm:ss A"),
         role: "user",
         isActive: true,
         lastLogin: null,
