@@ -59,10 +59,7 @@ async function run() {
       const newUser = {
         email: user.email,
         name: user.name,
-        creationDate: moment
-          .utc()
-          .tz("Asia/Dhaka")
-          .format("YYYY-MM-DD hh:mm:ss A"),
+        creationDate: moment().tz("Asia/Dhaka").format("YYYY-MM-DD hh:mm:ss A"),
         role: "user",
         isActive: true,
         lastLogin: null,
@@ -103,7 +100,7 @@ async function run() {
         res.send({ message: "Last login updated successfully" });
       } catch (error) {
         console.error("Error updating last login:", error);
-        res.status(500).send({ message: "Internal Server Err
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
