@@ -47,6 +47,7 @@ async function run() {
           .format("YYYY-MM-DD hh:mm:ss A"),
         role: "user",
         isActive: true,
+        isBlock: false,
         lastLogin: null,
       };
       const result = await userInfoCollection.insertOne(newUser);
