@@ -36,6 +36,7 @@ async function run() {
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
+    app.delete('/user-delete/:id', async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: new ObjectId(id) };
@@ -44,6 +45,7 @@ async function run() {
     });
     // get all user data
     app.get("/all-user/:email", async (req, res) => {
+    app.get('/all-user/:email', async (req, res) => {
       const email = req.params.email;
       const query = { email: { $ne: email } };
       const result = await userInfoCollection.find(query).toArray();
