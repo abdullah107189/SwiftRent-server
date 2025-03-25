@@ -1,4 +1,6 @@
 const express = require("express");
+const { ObjectId } = require("mongodb");
+
 require("dotenv").config();
 
 const moment = require("moment-timezone");
@@ -32,6 +34,21 @@ async function run() {
     const userInfoCollection = database.collection("usersInfo");
     const carsCollection = database.collection("cars");
 
+    //user delete
+    app.delete("/user-delete/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await userInfoCollection.deleteOne(query);
+      res.send(result);
+    });
+    // get all user data
+    app.get("/all-user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: { $ne: email } };
+      const result = await userInfoCollection.find(query).toArray();
+      res.send(result);
+    });
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
@@ -44,10 +61,7 @@ async function run() {
       const newUser = {
         email: user.email,
         name: user.name,
-        creationDate: moment
-          .utc()
-          .tz("Asia/Dhaka")
-          .format("YYYY-MM-DD hh:mm:ss A"),
+        creationDate: moment().tz("Asia/Dhaka").format("YYYY-MM-DD hh:mm:ss A"),
         role: "user",
         isActive: true,
         isBlock: false,
@@ -67,6 +81,24 @@ async function run() {
       }
     });
 
+    // car details api
+    app.get("/cars/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const car = await carsCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!car) {
+          return res.status(404).send({ message: "Car not found" });
+        }
+
+        return res.send(car);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch car details", error });
+      }
+    });
+    
+
+    // -----------
     app.patch("/update-last-login", async (req, res) => {
       try {
         const { email } = req.body;
