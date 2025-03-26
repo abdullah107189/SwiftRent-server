@@ -1,4 +1,6 @@
 const express = require("express");
+const { ObjectId } = require("mongodb");
+
 require("dotenv").config();
 
 const moment = require("moment-timezone");
@@ -33,6 +35,7 @@ async function run() {
     const carsCollection = database.collection("cars");
 
     //user delete
+    app.delete("/user-delete/:id", async (req, res) => {
     app.delete('/user-delete/:id', async (req, res) => {
       const id = req.params.id;
 
@@ -41,6 +44,7 @@ async function run() {
       res.send(result);
     });
     // get all user data
+    app.get("/all-user/:email", async (req, res) => {
     app.get('/all-user/:email', async (req, res) => {
       const email = req.params.email;
       const query = { email: { $ne: email } };
@@ -79,6 +83,24 @@ async function run() {
       }
     });
 
+    // car details api
+    app.get("/cars/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const car = await carsCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!car) {
+          return res.status(404).send({ message: "Car not found" });
+        }
+
+        return res.send(car);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch car details", error });
+      }
+    });
+    
+
+    // -----------
     app.patch("/update-last-login", async (req, res) => {
       try {
         const { email } = req.body;
