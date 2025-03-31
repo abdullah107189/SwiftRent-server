@@ -28,7 +28,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
@@ -36,7 +35,6 @@ async function run() {
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
-    app.delete('/user-delete/:id', async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: new ObjectId(id) };
@@ -45,7 +43,6 @@ async function run() {
     });
     // get all user data
     app.get("/all-user/:email", async (req, res) => {
-    app.get('/all-user/:email', async (req, res) => {
       const email = req.params.email;
       const query = { email: { $ne: email } };
       const result = await userInfoCollection.find(query).toArray();
@@ -98,7 +95,6 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch car details", error });
       }
     });
-    
 
     // -----------
     app.patch("/update-last-login", async (req, res) => {
@@ -145,11 +141,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-app.get("/", (req, res) => {
-  res.send("Hello World dada!");
-});
-// create development branch
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
