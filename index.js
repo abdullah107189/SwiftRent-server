@@ -32,6 +32,7 @@ async function run() {
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
     const carsCollection = database.collection("cars");
+    const bookingsCollection = database.collection("bookings");
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
@@ -130,6 +131,15 @@ async function run() {
       console.log(result);
       res.send(result);
     });
+
+    // Booking related API
+    app.post("/book-auto", async (req, res) => {
+      const booking = req.body;
+      console.log("New Booking: ", booking);
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     console.log(
