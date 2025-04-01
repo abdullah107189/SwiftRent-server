@@ -1,4 +1,6 @@
 const express = require("express");
+const { ObjectId } = require("mongodb");
+
 require("dotenv").config();
 
 const moment = require("moment-timezone");
@@ -26,21 +28,32 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
     const carsCollection = database.collection("cars");
     const bookingsCollection = database.collection("bookings");
 
+    //user delete
+    app.delete("/user-delete/:id", async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: new ObjectId(id) };
+      const result = await userInfoCollection.deleteOne(query);
+      res.send(result);
+    });
+    // get all user data
+    app.get("/all-user/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: { $ne: email } };
+      const result = await userInfoCollection.find(query).toArray();
+      res.send(result);
+    });
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
-
-      // Check if the user already exists
       const query = { email: user.email };
       const existingUser = await userInfoCollection.findOne(query);
-
       if (existingUser) {
         return res.send({ message: "User already exists" });
       }
@@ -48,15 +61,12 @@ async function run() {
       const newUser = {
         email: user.email,
         name: user.name,
-        creationDate: moment
-          .utc("2025-03-20T07:51:31.978Z")
-          .tz("Asia/Dhaka")
-          .format("YYYY-MM-DD hh:mm:ss A"),
+        creationDate: moment().tz("Asia/Dhaka").format("YYYY-MM-DD hh:mm:ss A"),
         role: "user",
         isActive: true,
+        isBlock: false,
         lastLogin: null,
       };
-      console.log(newUser);
       const result = await userInfoCollection.insertOne(newUser);
       res.send(result);
     });
@@ -67,7 +77,50 @@ async function run() {
         const cars = await carsCollection.find().toArray();
         return res.send(cars);
       } catch (error) {
-        res.json({ message: "Failed to fetch cars", error });
+        res.send({ message: "Failed to fetch cars", error });
+      }
+    });
+
+    // car details api
+    app.get("/cars/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const car = await carsCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!car) {
+          return res.status(404).send({ message: "Car not found" });
+        }
+
+        return res.send(car);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch car details", error });
+      }
+    });
+
+    // -----------
+    app.patch("/update-last-login", async (req, res) => {
+      try {
+        const { email } = req.body;
+
+        // Update lastLogin field
+        const result = await userInfoCollection.updateOne(
+          { email },
+          {
+            $set: {
+              lastLogin: moment
+                .utc()
+                .tz("Asia/Dhaka")
+                .format("YYYY-MM-DD hh:mm:ss A"),
+            },
+          }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        res.send({ message: "Last login updated successfully" });
+      } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
@@ -88,7 +141,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -98,11 +151,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-app.get("/", (req, res) => {
-  res.send("Hello World dada!");
-});
-// create development branch
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
