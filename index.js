@@ -51,7 +51,7 @@ async function run() {
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
-      const query = { email: user?.email };
+      const query = { "userInfo.email": user?.email };
       const existingUser = await userInfoCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "User already exists" });
@@ -98,10 +98,9 @@ async function run() {
     app.patch("/update-last-login", async (req, res) => {
       try {
         const { email } = req.body;
-
         // Update lastLogin field
         const result = await userInfoCollection.updateOne(
-          { email },
+          { "userInfo.email": email },
           {
             $set: {
               lastLogin: moment
