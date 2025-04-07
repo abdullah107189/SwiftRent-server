@@ -37,7 +37,6 @@ async function run() {
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
       const id = req.params.id;
-
       const query = { _id: new ObjectId(id) };
       const result = await userInfoCollection.deleteOne(query);
       res.send(result);
@@ -52,17 +51,15 @@ async function run() {
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
-      const query = { email: user.email };
+      const query = { email: user?.email };
       const existingUser = await userInfoCollection.findOne(query);
       if (existingUser) {
         return res.send({ message: "User already exists" });
       }
       // New User Data with Additional Fields
       const newUser = {
-        email: user.email,
-        name: user.name,
+        userInfo: user,
         creationDate: moment().tz("Asia/Dhaka").format("YYYY-MM-DD hh:mm:ss A"),
-        role: "user",
         isActive: true,
         isBlock: false,
         lastLogin: null,
