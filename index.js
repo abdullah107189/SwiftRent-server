@@ -62,30 +62,13 @@ async function run() {
       }
     });
 
-    // // Get User Role by Email
-    // app.get('/users/role/:email', async (req, res) => {
-    //   try {
-    //     const email = req.params.email;
-    //     const result = await userInfoCollection.findOne({ email });
-    //     console.log('user role', result);
-    //     if (result && result.role) {
-    //       console.log('User role:', result.role);
-    //       res.send({ role: result.role.trim() });
-    //     } else {
-    //       res.status(404).send({ message: 'User not found' });
-    //     }
-    //   } catch (error) {
-    //     res.status(500).send({ message: 'Server error', error: error.message });
-    //   }
-    // });
-
     app.get('/users/role/:email', async (req, res) => {
       try {
         const email = req.params.email;
         const result = await userInfoCollection.findOne({
           'userInfo.email': email,
         });
-        console.log('User data:', result);
+
         if (result && result.userInfo && result.userInfo.role) {
           console.log('User role:', result.userInfo.role);
           res.send({ role: result.userInfo.role.trim() });
