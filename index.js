@@ -325,8 +325,6 @@ async function run() {
       }
     });
 
-    
-
     // Success Payment Callback
     app.post("/payment-success/:tran_id", async (req, res) => {
       try {
@@ -363,6 +361,28 @@ async function run() {
       } catch (error) {
         console.error("Payment success saving error:", error);
         res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    // Failed Payment Callback
+    app.post("/payment-fail/:tran_id", async (req, res) => {
+      const { tran_id } = req.params;
+
+      try {
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(tran_id) },
+          { $set: { paymentStatus: "Failed" } }
+        );
+
+        res.status(200).json({ message: "Payment failed and handled." });
+      } catch (error) {
+        console.error("Payment fail handling error:", error);
+        res
+          .status(500)
+          .json({
+            message: "Error handling failed payment",
+            error: error.message,
+          });
       }
     });
 
