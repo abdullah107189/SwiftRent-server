@@ -1,9 +1,10 @@
-const express = require("express");
-const { ObjectId } = require("mongodb");
 
-require("dotenv").config();
-
-const moment = require("moment-timezone");
+const express = require('express');
+const { ObjectId } = require('mongodb');
+require('dotenv').config();
+const moment = require('moment-timezone');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
 const port = 3000;
 const cors = require("cors");
@@ -29,11 +30,13 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // await client.connect();
-    const database = client.db("SwiftRent-DB");
-    const userInfoCollection = database.collection("usersInfo");
-    const carsCollection = database.collection("cars");
-    const bookingsCollection = database.collection("bookings");
-    const reviewsCollection = database.collection("reviews");
+
+    const database = client.db('SwiftRent-DB');
+    const userInfoCollection = database.collection('usersInfo');
+    const carsCollection = database.collection('cars');
+    const bookingsCollection = database.collection('bookings');
+    const reviewsCollection = database.collection('reviews');
+    const aboutCollection = database.collection('about');
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
@@ -49,6 +52,36 @@ async function run() {
       const result = await userInfoCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.get('/all-user', async (req, res) => {
+      try {
+        const users = await userInfoCollection.find().toArray();
+
+        res.status(200).send(users);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send({ message: 'Failed to fetch users' });
+      }
+    });
+
+    app.get('/users/role/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const result = await userInfoCollection.findOne({
+          'userInfo.email': email,
+        });
+
+        if (result && result.userInfo && result.userInfo.role) {
+          console.log('User role:', result.userInfo.role);
+          res.send({ role: result.userInfo.role.trim() });
+        } else {
+          res.status(404).send({ message: 'User not found' });
+        }
+      } catch (error) {
+        res.status(500).send({ message: 'Server error', error: error.message });
+      }
+    });
+
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
@@ -243,6 +276,16 @@ async function run() {
         res.status(500).send({
           message: "Failed to submit review!",
         });
+      }
+    });
+
+    // Get all experts
+    app.get('/about', async (req, res) => {
+      try {
+        const experts = await aboutCollection.find().toArray();
+        res.send(experts);
+      } catch (error) {
+        res.status(500).send({ message: 'Failed to fetch about', error });
       }
     });
 
