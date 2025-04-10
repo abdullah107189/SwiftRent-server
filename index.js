@@ -4,8 +4,9 @@ const { ObjectId } = require("mongodb");
 const SSLCommerzPayment = require('sslcommerz-lts')
 
 require("dotenv").config();
-
 const moment = require("moment-timezone");
+// const jwt = require("jsonwebtoken");
+// const cookieParser = require("cookie-parser");
 const app = express();
 const port = 3000;
 const cors = require("cors");
@@ -35,6 +36,7 @@ const is_live = false //true for live, false for sandbox
 async function run() {
   try {
     // await client.connect();
+
     const database = client.db("SwiftRent-DB");
     const userInfoCollection = database.collection("usersInfo");
     const carsCollection = database.collection("cars");
@@ -56,6 +58,35 @@ async function run() {
       const result = await userInfoCollection.find(query).toArray();
       res.send(result);
     });
+
+    app.get("/all-user", async (req, res) => {
+      try {
+        const users = await userInfoCollection.find().toArray();
+
+        res.status(200).send(users);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        res.status(500).send({ message: "Failed to fetch users" });
+      }
+    });
+
+    app.get("/users/role/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const result = await userInfoCollection.findOne({
+          "userInfo.email": email,
+        });
+
+        if (result && result.userInfo && result.userInfo.role) {
+          res.send({ role: result.userInfo.role.trim() });
+        } else {
+          res.status(404).send({ message: "User not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Server error", error: error.message });
+      }
+    });
+
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
@@ -76,13 +107,99 @@ async function run() {
       res.send(result);
     });
 
-    // cars related apis
+    // cars related filter, sort and searching
     app.get("/cars", async (req, res) => {
       try {
-        const cars = await carsCollection.find().toArray();
-        return res.send(cars);
+        const query = {};
+        const { search = "" } = req.query;
+        const filter = search?.filter;
+        const brand = filter?.filterBrand;
+        const type = filter?.carType;
+        const fuel = filter?.fuelType;
+
+        const minPrice = filter?.priceRange?.min;
+        const maxPrice = filter?.priceRange?.max;
+        const sortOption = search?.sortOption;
+        // Search (by name)
+        if (search?.search) {
+          query.name = { $regex: search.search, $options: "i" };
+        }
+
+        // Brand filter
+        if (brand) {
+          const brandArray = Array.isArray(brand) ? brand : [brand];
+          query.brand = {
+            $in: brandArray.map((b) => new RegExp(`^${b}$`, "i")),
+          }; // case-insensitive
+        }
+
+        // Type filter
+        if (type) {
+          const typeArray = Array.isArray(type) ? type : [type];
+          query.type = {
+            $in: typeArray.map((t) => new RegExp(`^${t}$`, "i")),
+          };
+        }
+
+        // Fuel filter
+        if (fuel) {
+          const fuelArray = Array.isArray(fuel) ? fuel : [fuel];
+          query.fuel = {
+            $in: fuelArray.map((f) => new RegExp(`^${f}$`, "i")),
+          };
+        }
+
+        //  price filter
+        const min =
+          minPrice?.toString().trim() !== "" ? Number(minPrice) : null;
+        const max =
+          maxPrice?.toString().trim() !== "" ? Number(maxPrice) : null;
+
+        if (min !== null && max !== null && !isNaN(min) && !isNaN(max)) {
+          query.price = { $gte: min, $lte: max };
+        }
+        // Only min
+        else if (min !== null && !isNaN(min)) {
+          query.price = { $gte: min };
+        }
+        // Only max
+        else if (max !== null && !isNaN(max)) {
+          query.price = { $lte: max };
+        }
+
+        // sorting  here
+        switch (sortOption) {
+          case "priceAsc":
+            sort = { price: 1 };
+            break;
+          case "priceDesc":
+            sort = { price: -1 };
+            break;
+          case "nameAsc":
+            sort = { name: 1 };
+            break;
+          case "nameDesc":
+            sort = { name: -1 };
+            break;
+          default:
+            sort = {};
+            break;
+        }
+
+        const cars = await carsCollection.find(query).sort(sort).toArray();
+
+        res.send(cars);
       } catch (error) {
-        res.send({ message: "Failed to fetch cars", error });
+        res.status(500).send({ message: "Failed to fetch carssssss", error });
+      }
+    });
+
+    app.get("/carsFilter", async (req, res) => {
+      try {
+        const cars = await carsCollection.find().toArray();
+        res.send(cars);
+      } catch (error) {
+        res.send({ message: error.message }).status(500);
       }
     });
 
@@ -130,16 +247,13 @@ async function run() {
 
     app.post("/add-car", async (req, res) => {
       const car = req.body;
-      console.log("car", car);
       const result = await carsCollection.insertOne(car);
-      console.log(result);
       res.send(result);
     });
 
     // Booking related API
     app.post("/book-auto", async (req, res) => {
       const booking = req.body;
-      console.log("New Booking: ", booking);
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
@@ -152,7 +266,6 @@ async function run() {
         const review = await reviewsCollection.find().toArray();
         res.send(review);
       } catch (error) {
-        console.error("Failed to submit review!", error);
         res.status(500).send({
           message: "Failed to submit review!",
         });
@@ -166,7 +279,6 @@ async function run() {
         const result = await reviewsCollection.insertOne(review);
         res.send(result);
       } catch (error) {
-        console.error("Failed to submit review!", error);
         res.status(500).send({
           message: "Failed to submit review!",
         });
@@ -174,10 +286,14 @@ async function run() {
     });
 
     // Get all experts
-    app.get("/about", async (req, res) => {
+    app.get("/expert-teammate", async (req, res) => {
       try {
         const experts = await aboutCollection.find().toArray();
-        res.send(experts);
+
+        // Shuffle the array
+        const shuffledExperts = experts.sort(() => 0.5 - Math.random());
+
+        res.send(shuffledExperts);
       } catch (error) {
         res.status(500).send({ message: "Failed to fetch about", error });
       }
