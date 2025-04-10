@@ -84,20 +84,6 @@ async function run() {
         }
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
-    // get single user data
-    app.get("/user-info/:email", async (req, res) => {
-      try {
-        const email = req.params.email;
-        const query = { "userInfo.email": email };
-        const user = await userInfoCollection.findOne(query);
-
-        if (!user) {
-          return res.status(404).send({ message: "User not found" });
-        }
-
-        res.send(user.userInfo);
-      } catch (error) {
-        res.status(500).send({ message: "Failed to fetch user info", error });
       }
     });
 
