@@ -377,12 +377,32 @@ async function run() {
         res.status(200).json({ message: "Payment failed and handled." });
       } catch (error) {
         console.error("Payment fail handling error:", error);
+        res.status(500).json({
+          message: "Error handling failed payment",
+          error: error.message,
+        });
+      }
+    });
+
+    // Cancel Payment Callback
+    app.post("/payment-cancel/:tran_id", async (req, res) => {
+      const { tran_id } = req.params;
+
+      try {
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(tran_id) },
+          { $set: { paymentStatus: "Cancelled" } }
+        );
+
         res
-          .status(500)
-          .json({
-            message: "Error handling failed payment",
-            error: error.message,
-          });
+          .status(200)
+          .json({ message: "Payment cancelled by user and handled." });
+      } catch (error) {
+        console.error("Payment cancel handling error:", error);
+        res.status(500).json({
+          message: "Error handling cancelled payment",
+          error: error.message,
+        });
       }
     });
 
