@@ -69,18 +69,101 @@ async function run() {
       res.send(result);
     });
 
-    // cars related apis
+    // cars related filter, sort and searching
     app.get("/cars", async (req, res) => {
       try {
-        const { search, brand, type, fuel, minPrice, maxPrice } = req.query;
-        console.log("search is here ...............", search, brand, type, fuel, minPrice, maxPrice);
-        const cars = await carsCollection.find().toArray();
-        return res.send(cars);
+        const query = {};
+        const { search = "" } = req.query;
+        const filter = search?.filter;
+        const brand = filter?.filterBrand;
+        const type = filter?.carType;
+        const fuel = filter?.fuelType;
+
+        const minPrice = filter?.priceRange?.min;
+        const maxPrice = filter?.priceRange?.max;
+        const sortOption = search?.sortOption;
+        // Search (by name)
+        if (search?.search) {
+          query.name = { $regex: search.search, $options: "i" };
+        }
+
+        // Brand filter
+        if (brand) {
+          const brandArray = Array.isArray(brand) ? brand : [brand];
+          query.brand = {
+            $in: brandArray.map((b) => new RegExp(`^${b}$`, "i")),
+          }; // case-insensitive
+        }
+
+        // Type filter
+        if (type) {
+          const typeArray = Array.isArray(type) ? type : [type];
+          query.type = {
+            $in: typeArray.map((t) => new RegExp(`^${t}$`, "i")),
+          };
+        }
+
+        // Fuel filter
+        if (fuel) {
+          const fuelArray = Array.isArray(fuel) ? fuel : [fuel];
+          query.fuel = {
+            $in: fuelArray.map((f) => new RegExp(`^${f}$`, "i")),
+          };
+        }
+
+        //  price filter
+        const min =
+          minPrice?.toString().trim() !== "" ? Number(minPrice) : null;
+        const max =
+          maxPrice?.toString().trim() !== "" ? Number(maxPrice) : null;
+
+        if (min !== null && max !== null && !isNaN(min) && !isNaN(max)) {
+          query.price = { $gte: min, $lte: max };
+        }
+        // Only min
+        else if (min !== null && !isNaN(min)) {
+          query.price = { $gte: min };
+        }
+        // Only max
+        else if (max !== null && !isNaN(max)) {
+          query.price = { $lte: max };
+        }
+
+
+        // sorting  here
+        switch (sortOption) {
+          case "priceAsc":
+            sort = { price: 1 };
+            break;
+          case "priceDesc":
+            sort = { price: -1 };
+            break;
+          case "nameAsc":
+            sort = { name: 1 };
+            break;
+          case "nameDesc":
+            sort = { name: -1 };
+            break;
+          default:
+            sort = {};
+            break;
+        }
+
+        const cars = await carsCollection.find(query).sort(sort).toArray();
+      
+        res.send(cars);
       } catch (error) {
-        res.send({ message: "Failed to fetch cars", error });
+        res.status(500).send({ message: "Failed to fetch carssssss", error });
       }
     });
-
+    app.get("/carsFilter", async (req, res) => {
+      try {
+        const cars = await carsCollection.find().toArray();
+        res.send(cars);
+      } catch (error) {
+        res.send({ message: error.message }).status(500);
+      }
+    });
     // car details api
     app.get("/cars/:id", async (req, res) => {
       try {
@@ -125,16 +208,13 @@ async function run() {
 
     app.post("/add-car", async (req, res) => {
       const car = req.body;
-      console.log("car", car);
       const result = await carsCollection.insertOne(car);
-      console.log(result);
       res.send(result);
     });
 
     // Booking related API
     app.post("/book-auto", async (req, res) => {
       const booking = req.body;
-      console.log("New Booking: ", booking);
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
@@ -147,7 +227,6 @@ async function run() {
         const review = await reviewsCollection.find().toArray();
         res.send(review);
       } catch (error) {
-        console.error("Failed to submit review!", error);
         res.status(500).send({
           message: "Failed to submit review!",
         });
@@ -161,7 +240,6 @@ async function run() {
         const result = await reviewsCollection.insertOne(review);
         res.send(result);
       } catch (error) {
-        console.error("Failed to submit review!", error);
         res.status(500).send({
           message: "Failed to submit review!",
         });
