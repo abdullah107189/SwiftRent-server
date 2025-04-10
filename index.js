@@ -43,6 +43,7 @@ async function run() {
     const bookingsCollection = database.collection("bookings");
     const reviewsCollection = database.collection("reviews");
     const aboutCollection = database.collection("about");
+    const paymentsCollection = database.collection("payments");
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
@@ -321,6 +322,95 @@ async function run() {
         res.send(shuffledExperts);
       } catch (error) {
         res.status(500).send({ message: "Failed to fetch about", error });
+      }
+    });
+
+    
+
+    // Success Payment Callback
+    app.post("/payment-success/:tran_id", async (req, res) => {
+      try {
+        const { tran_id } = req.params;
+
+        // Find the booking info
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(tran_id),
+        });
+        if (!booking)
+          return res.status(404).json({ message: "Booking not found" });
+
+        // Prepare payment info to store
+        const paymentInfo = {
+          bookingId: tran_id,
+          carName: booking.carName,
+          carBrand: booking.carBrand,
+          fullName: booking.fullName,
+          email: booking.email,
+          phone: booking.phone,
+          price: booking.price,
+          pickUpDate: booking.pickUpDate,
+          pickUpLocation: booking.pickUpLocation,
+          paymentTime: moment()
+            .tz("Asia/Dhaka")
+            .format("YYYY-MM-DD hh:mm:ss A"),
+          status: "Success",
+        };
+
+        // Save to payments collection
+        const result = await paymentsCollection.insertOne(paymentInfo);
+
+        res.redirect(`${process.env.CLIENT_URL}/payment-success/${tran_id}`);
+      } catch (error) {
+        console.error("Payment success saving error:", error);
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.post("/create-payment/:bookingId", async (req, res) => {
+      console.log("Payment route hit", req.params.bookingId);
+      try {
+        const { bookingId } = req.params;
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(bookingId),
+        });
+        if (!booking)
+          return res.status(404).json({ message: "Booking not found" });
+
+        const tran_id = booking._id.toString();
+        const total_amount = booking.price;
+        const currency = "USD";
+        const success_url = `${process.env.SERVER_URL}/payment-success/${tran_id}`;
+        const fail_url = `${process.env.SERVER_URL}/payment-fail/${tran_id}`;
+        const cancel_url = `${process.env.SERVER_URL}/payment-cancel/${tran_id}`;
+
+        const paymentData = {
+          total_amount,
+          currency,
+          tran_id,
+          success_url,
+          fail_url,
+          cancel_url,
+          ipn_url: `${process.env.SERVER_URL}/ipn`,
+          shipping_method: "NO",
+          product_name: booking.carName,
+          product_category: booking.carBrand,
+          product_profile: "general",
+          cus_name: booking.fullName,
+          cus_email: booking.email,
+          cus_add1: booking.pickUpLocation,
+          cus_phone: booking.phone,
+        };
+
+        const sslcommerz = new SSLCommerzPayment(
+          store_id,
+          store_passwd,
+          is_live
+        );
+        const response = await sslcommerz.init(paymentData);
+        return res.json(response);
+      } catch (err) {
+        console.error("Payment init error:", err);
+        return res.status(500).json({ message: "Could not initiate payment" });
       }
     });
 
