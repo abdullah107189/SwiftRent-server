@@ -87,6 +87,23 @@ async function run() {
       }
     });
 
+    // Get user info by email
+    app.get("/user-info/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { "userInfo.email": email };
+        const user = await userInfoCollection.findOne(query);
+
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send(user.userInfo);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch user info", error });
+      }
+    });
+
     //Users related api
     app.post("/add-user", async (req, res) => {
       const user = req.body;
