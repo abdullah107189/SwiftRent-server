@@ -1,6 +1,8 @@
 const express = require("express");
 const { ObjectId } = require("mongodb");
 
+const SSLCommerzPayment = require('sslcommerz-lts')
+
 require("dotenv").config();
 
 const moment = require("moment-timezone");
@@ -25,6 +27,10 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const store_id = process.env.STORE_ID;  
+const store_passwd = process.env.STORE_PASSWD; 
+const is_live = false //true for live, false for sandbox
 
 async function run() {
   try {
