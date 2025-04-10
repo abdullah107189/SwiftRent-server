@@ -1,7 +1,7 @@
 const express = require("express");
 const { ObjectId } = require("mongodb");
 
-const SSLCommerzPayment = require('sslcommerz-lts')
+const SSLCommerzPayment = require("sslcommerz-lts");
 
 require("dotenv").config();
 const moment = require("moment-timezone");
@@ -29,9 +29,9 @@ const client = new MongoClient(uri, {
   },
 });
 
-const store_id = process.env.STORE_ID;  
-const store_passwd = process.env.STORE_PASSWD; 
-const is_live = false //true for live, false for sandbox
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASSWD;
+const is_live = false; //true for live, false for sandbox
 
 async function run() {
   try {
@@ -84,6 +84,20 @@ async function run() {
         }
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
+    // get single user data
+    app.get("/user-info/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { "userInfo.email": email };
+        const user = await userInfoCollection.findOne(query);
+
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send(user.userInfo);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch user info", error });
       }
     });
 
