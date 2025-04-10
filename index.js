@@ -275,6 +275,14 @@ async function run() {
       res.send(result);
     });
 
+    // get all bookings
+    app.get("/bookings/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const bookings = await bookingsCollection.find(query).toArray();
+      res.send(bookings);
+    });
+
     //review related api
 
     // review get api
