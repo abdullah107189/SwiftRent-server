@@ -14,8 +14,8 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
-// const uri = 'mongodb://localhost:27017/';
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
+const uri = 'mongodb://localhost:27017/';
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -62,6 +62,32 @@ async function run() {
       }
     });
 
+    //customers role api
+    app.get('/customers/:role', async (req, res) => {
+      try {
+        const role = req.params.role;
+        const query = { 'userInfo.role': role };
+        const result = await userInfoCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server error', error: error.message });
+      }
+    });
+
+    //driver role api
+
+    app.get('/drivers/:role', async (req, res) => {
+      try {
+        const role = req.params.role;
+        const query = { 'userInfo.role': role };
+        const result = await userInfoCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server error', error: error.message });
+      }
+    });
+
+    //admin role api
     app.get('/users/role/:email', async (req, res) => {
       try {
         const email = req.params.email;
@@ -152,6 +178,32 @@ async function run() {
       }
     });
 
+    //car detelt api
+    app.delete('/cars/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await carsCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Failed to delete car' });
+      }
+    });
+
+    // car get api
+
+    app.get('/cars', async (req, res) => {
+      try {
+        const result = await carsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        console.error('Failed to fetch cars!', error);
+        res.status(500).send({
+          message: 'Failed to Fetch Cars',
+        });
+      }
+    });
     app.post('/add-car', async (req, res) => {
       const car = req.body;
       console.log('car', car);
@@ -173,12 +225,15 @@ async function run() {
     // review get api
     app.get('/car/review', async (req, res) => {
       try {
-        const review = await reviewsCollection.find().toArray();
+        const review = await reviewsCollection
+          .find()
+          .sort({ _id: -1 })
+          .toArray();
         res.send(review);
       } catch (error) {
-        console.error('Failed to submit review!', error);
+        console.error('Failed to fetch reviews!', error);
         res.status(500).send({
-          message: 'Failed to submit review!',
+          message: 'Failed to fetch reviews!',
         });
       }
     });
