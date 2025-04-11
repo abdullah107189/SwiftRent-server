@@ -272,7 +272,12 @@ async function run() {
     // Booking related API
     app.post("/book-auto", async (req, res) => {
       const booking = req.body;
-      const result = await bookingsCollection.insertOne(booking);
+      // Set default payment status
+      const newBooking = {
+        ...booking,
+        paymentStatus: "Pending",
+      };
+      const result = await bookingsCollection.insertOne(newBooking);
       res.send(result);
     });
 
@@ -351,13 +356,20 @@ async function run() {
           paymentTime: moment()
             .tz("Asia/Dhaka")
             .format("YYYY-MM-DD hh:mm:ss A"),
-          status: "Success",
+          paymentStatus: "Success",
         };
 
         // Save to payments collection
-        const result = await paymentsCollection.insertOne(paymentInfo);
+        await paymentsCollection.insertOne(paymentInfo);
 
-        res.redirect(`${process.env.CLIENT_URL}/payment-success/${tran_id}`);
+        // Update paymentStatus in bookings collection
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(tran_id) },
+          { $set: { paymentStatus: "Success" } }
+        );
+
+        res.redirect(`${process.env.CLIENT_URL}/`);
+        //payment-success/${tran_id}
       } catch (error) {
         console.error("Payment success saving error:", error);
         res.status(500).json({ message: "Internal Server Error" });
