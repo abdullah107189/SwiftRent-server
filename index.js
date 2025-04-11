@@ -263,6 +263,12 @@ async function run() {
       }
     });
 
+    //cars manage api
+    app.get('/manage-cars', async (req, res) => {
+      const result = await carsCollection.find().toArray();
+      res.send(result);
+    });
+
     // -----------
     app.patch('/update-last-login', async (req, res) => {
       try {
