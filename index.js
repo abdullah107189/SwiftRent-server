@@ -330,6 +330,16 @@ async function run() {
       }
     });
 
+    // Generate a random transaction ID
+    function generateTrxId(length = 12) {
+      const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let trxId = "";
+      for (let i = 0; i < length; i++) {
+        trxId += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return trxId;
+    }
+
     // Success Payment Callback
     app.post("/payment-success/:tran_id", async (req, res) => {
       try {
@@ -357,6 +367,7 @@ async function run() {
             .tz("Asia/Dhaka")
             .format("YYYY-MM-DD hh:mm:ss A"),
           paymentStatus: "Success",
+          trxID: generateTrxId(),
         };
 
         // Save to payments collection
