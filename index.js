@@ -340,6 +340,17 @@ async function run() {
       return trxId;
     }
 
+    // Get payment history for a specific user
+    app.get("/payments/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const payments = await paymentsCollection
+        .find(query)
+        .sort({ paymentTime: -1 })
+        .toArray();
+      res.send(payments);
+    });
+
     // Success Payment Callback
     app.post("/payment-success/:tran_id", async (req, res) => {
       try {
@@ -379,7 +390,7 @@ async function run() {
           { $set: { paymentStatus: "Success" } }
         );
 
-        res.redirect(`${process.env.CLIENT_URL}/`);
+        res.redirect(`${process.env.CLIENT_URL}/dashboard/payments`);
         //payment-success/${tran_id}
       } catch (error) {
         console.error("Payment success saving error:", error);
