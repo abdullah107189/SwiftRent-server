@@ -35,7 +35,6 @@ const is_live = false; //true for live, false for sandbox
 
 async function run() {
   try {
-
     app.get("/", (req, res) => {
       res.send("Hello World! from server");
     });
@@ -276,12 +275,7 @@ async function run() {
     // Booking related API
     app.post("/book-auto", async (req, res) => {
       const booking = req.body;
-      // Set default payment status
-      const newBooking = {
-        ...booking,
-        paymentStatus: "Pending",
-      };
-      const result = await bookingsCollection.insertOne(newBooking);
+      const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
 
