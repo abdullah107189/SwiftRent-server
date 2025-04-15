@@ -427,6 +427,37 @@ async function run() {
       }
     });
 
+    // Finish Trip
+    app.post("/finish-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // driverAssignments Collection tripStatus UpDate
+        const assignmentUpdate = await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail, tripStatus: "Started" },
+          { $set: { tripStatus: "Completed" } }
+        );
+
+        if (assignmentUpdate.matchedCount === 0) {
+          return res.status(400).send({ message: "Trip cannot be finished" });
+        }
+
+        // bookings Collection tripStatus Update
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { tripStatus: "Completed" } }
+        );
+
+        res.send({ message: "Trip finished successfully" });
+      } catch (error) {
+        console.error("Error finishing trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to finish trip", error: error.message });
+      }
+    });
+
     // Get driver assignments by email
     app.get("/driver-assignments/:email", async (req, res) => {
       try {
