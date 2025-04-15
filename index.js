@@ -17,8 +17,8 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require("mongodb");
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
-// const uri = 'mongodb://localhost:27017/';
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
+const uri = 'mongodb://localhost:27017/';
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -75,7 +75,7 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch users" });
       }
     });
-
+// user role api
     app.get("/users/role/:email", async (req, res) => {
       try {
         const email = req.params.email;
@@ -92,6 +92,31 @@ async function run() {
         res.status(500).send({ message: "Server error", error: error.message });
       }
     });
+     //customers role api
+    app.get('/customers/:role', async (req, res) => {
+      try {
+        const role = req.params.role;
+        const query = { 'userInfo.role': role };
+        const result = await userInfoCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server error', error: error.message });
+      }
+    });
+
+    //driver role api
+
+    app.get('/drivers/:role', async (req, res) => {
+      try {
+        const role = req.params.role;
+        const query = { 'userInfo.role': role };
+        const result = await userInfoCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: 'Server error', error: error.message });
+      }
+    });
+
 
     // Get user info by email
     app.get("/user-info/:email", async (req, res) => {
@@ -226,6 +251,12 @@ async function run() {
       }
     });
 
+        // manage-cars api
+
+    app.get('/manage-cars', async (req, res) => {
+      const result = await carsCollection.find().toArray();
+      res.send(result);
+    });
     // car details api
     app.get("/cars/:id", async (req, res) => {
       try {
@@ -267,7 +298,18 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
-
+    //car detelt api
+    app.delete('/cars/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await carsCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Failed to delete car' });
+      }
+    });
     app.post("/add-car", async (req, res) => {
       const car = req.body;
       const result = await carsCollection.insertOne(car);
