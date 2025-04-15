@@ -354,6 +354,22 @@ async function run() {
       }
     });
 
+    // Get driver assignments by email
+    app.get("/driver-assignments/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { driverEmail: email, tripStatus: "Booked" };
+        const assignments = await driverAssignmentsCollection
+          .find(query)
+          .toArray();
+        res.send(assignments);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Failed to fetch driver assignments", error });
+      }
+    });
+
     // Pick Trip
     app.post("/pick-trip/:id", async (req, res) => {
       const id = req.params.id;
