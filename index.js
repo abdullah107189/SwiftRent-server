@@ -354,11 +354,42 @@ async function run() {
       }
     });
 
+    // Start Trip
+    app.post("/start-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // driverAssignments Collection tripStatus Update
+        const assignmentUpdate = await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail, tripStatus: "Booked" },
+          { $set: { tripStatus: "Started" } }
+        );
+
+        if (assignmentUpdate.matchedCount === 0) {
+          return res.status(400).send({ message: "Trip cannot be started" });
+        }
+
+        // bookings Collection tripStatus Update
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { tripStatus: "Started" } }
+        );
+
+        res.send({ message: "Trip started successfully" });
+      } catch (error) {
+        console.error("Error starting trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to start trip", error: error.message });
+      }
+    });
+
     // Get driver assignments by email
     app.get("/driver-assignments/:email", async (req, res) => {
       try {
         const email = req.params.email;
-        const query = { driverEmail: email, tripStatus: "Booked" };
+        const query = { driverEmail: email };
         const assignments = await driverAssignmentsCollection
           .find(query)
           .toArray();
