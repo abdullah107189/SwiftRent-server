@@ -47,6 +47,8 @@ async function run() {
     const reviewsCollection = database.collection("reviews");
     const aboutCollection = database.collection("about");
     const paymentsCollection = database.collection("payments");
+    const driverAssignmentsCollection =
+      database.collection("driverAssignments");
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
@@ -325,6 +327,19 @@ async function run() {
         res.send(shuffledExperts);
       } catch (error) {
         res.status(500).send({ message: "Failed to fetch about", error });
+      }
+    });
+
+    // Driver related API
+    app.get("/available-trips", async (req, res) => {
+      try {
+        const query = { driver: "Not Assigned" };
+        const availableTrips = await bookingsCollection.find(query).toArray();
+        res.send(availableTrips);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Failed to fetch available trips", error });
       }
     });
 
