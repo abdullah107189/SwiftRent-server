@@ -343,6 +343,64 @@ async function run() {
       }
     });
 
+    // Pick Trip
+    app.post("/pick-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // Update the booking if it's still available
+        const updateResult = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id), driver: "Not Assigned" },
+          { $set: { tripStatus: "Booked", driver: "Assigned" } }
+        );
+
+        if (updateResult.matchedCount === 0) {
+          return res
+            .status(400)
+            .send({ message: "Trip is no longer available" });
+        }
+
+        // Fetch the booking details
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!booking) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
+
+        // Create a new assignment document
+        const assignment = {
+          bookingId: id,
+          driverEmail: driverEmail,
+          carName: booking.carName,
+          carBrand: booking.carBrand,
+          customerName: booking.fullName,
+          customerEmail: booking.email,
+          customerPhone: booking.phone,
+          price: booking.price,
+          pickUpLocation: booking.pickUpLocation,
+          dropOffLocation: booking.dropOffLocation,
+          pickUpDate: booking.pickUpDate,
+          returnDate: booking.returnDate,
+          additionalNote: booking.additionalNote,
+          paymentStatus: booking.paymentStatus,
+          tripStatus: "Booked",
+          assignmentTime: moment()
+            .tz("Asia/Dhaka")
+            .format("YYYY-MM-DD hh:mm:ss A"),
+        };
+
+        await driverAssignmentsCollection.insertOne(assignment);
+        res.send({ message: "Trip picked successfully" });
+      } catch (error) {
+        console.error("Error picking trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to pick trip", error: error.message });
+      }
+    });
+
     // Generate a random transaction ID
     function generateTrxId(length = 12) {
       const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
