@@ -274,9 +274,13 @@ async function run() {
       res.send(result);
     });
 
-    // Booking related API
+    // Booking related APIs
     app.post("/book-auto", async (req, res) => {
-      const booking = req.body;
+      const booking = {
+        ...req.body,
+        driver: "Not Assigned",
+        canceledByDrivers: [],
+      };
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
@@ -330,10 +334,17 @@ async function run() {
       }
     });
 
-    // Driver related API
+    // Driver related APIs
     app.get("/available-trips", async (req, res) => {
       try {
-        const query = { driver: "Not Assigned" };
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+        const query = {
+          driver: "Not Assigned",
+          canceledByDrivers: { $nin: [email] },
+        };
         const availableTrips = await bookingsCollection.find(query).toArray();
         res.send(availableTrips);
       } catch (error) {
@@ -398,6 +409,42 @@ async function run() {
         res
           .status(500)
           .send({ message: "Failed to pick trip", error: error.message });
+      }
+    });
+
+    // Cancel Trip
+    app.post("/cancel-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // Check if the booking exists and is still available
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!booking) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
+        if (booking.driver !== "Not Assigned") {
+          return res.status(400).send({ message: "Trip is already assigned" });
+        }
+
+        // Add the driver's email to canceledByDrivers array, avoiding duplicates
+        const updateResult = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $addToSet: { canceledByDrivers: driverEmail } }
+        );
+
+        if (updateResult.modifiedCount === 0) {
+          return res.status(400).send({ message: "Failed to cancel trip" });
+        }
+
+        res.send({ message: "Trip canceled successfully for this driver" });
+      } catch (error) {
+        console.error("Error canceling trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to cancel trip", error: error.message });
       }
     });
 
