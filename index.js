@@ -156,6 +156,16 @@ async function run() {
     });
 
     // cars related filter, sort and searching
+    app.get("/all-cars", async (req, res) => {
+      try {
+        const users = await carsCollection.find().toArray();
+
+        res.status(200).send(users);
+      } catch (error) {
+        console.error("Error fetching cars:", error);
+        res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
     app.get("/cars", async (req, res) => {
       try {
         const query = {};
