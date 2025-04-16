@@ -155,7 +155,19 @@ async function run() {
     });
 
     // cars related filter, sort and searching
-    app.get('/cars', async (req, res) => {
+
+    app.get("/all-cars", async (req, res) => {
+      try {
+        const users = await carsCollection.find().toArray();
+
+        res.status(200).send(users);
+      } catch (error) {
+        console.error("Error fetching cars:", error);
+        res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
+    app.get("/cars", async (req, res) => {
+
       try {
         const query = {};
         const { search = '' } = req.query;
@@ -353,9 +365,15 @@ async function run() {
       res.send(result);
     });
 
-    // Booking related API
-    app.post('/book-auto', async (req, res) => {
-      const booking = req.body;
+
+    // Booking related APIs
+    app.post("/book-auto", async (req, res) => {
+      const booking = {
+        ...req.body,
+        driver: "Not Assigned",
+        canceledByDrivers: [],
+      };
+
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
@@ -409,16 +427,115 @@ async function run() {
       }
     });
 
-    // Driver related API
-    app.get('/available-trips', async (req, res) => {
+    // Driver related APIs
+    app.get("/available-trips", async (req, res) => {
       try {
-        const query = { driver: 'Not Assigned' };
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+        const query = {
+          driver: "Not Assigned",
+          canceledByDrivers: { $nin: [email] },
+        };
+
         const availableTrips = await bookingsCollection.find(query).toArray();
         res.send(availableTrips);
       } catch (error) {
         res
           .status(500)
           .send({ message: 'Failed to fetch available trips', error });
+      }
+    });
+
+    // Start Trip
+    app.post("/start-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // driverAssignments Collection tripStatus Update
+        const assignmentUpdate = await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail, tripStatus: "Booked" },
+          { $set: { tripStatus: "Started" } }
+        );
+
+        if (assignmentUpdate.matchedCount === 0) {
+          return res.status(400).send({ message: "Trip cannot be started" });
+        }
+
+        // bookings Collection tripStatus Update
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { tripStatus: "Started" } }
+        );
+
+        res.send({ message: "Trip started successfully" });
+      } catch (error) {
+        console.error("Error starting trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to start trip", error: error.message });
+      }
+    });
+
+    // Finish Trip
+    app.post("/finish-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // driverAssignments Collection tripStatus UpDate
+        const assignmentUpdate = await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail, tripStatus: "Started" },
+          { $set: { tripStatus: "Completed" } }
+        );
+
+        if (assignmentUpdate.matchedCount === 0) {
+          return res.status(400).send({ message: "Trip cannot be finished" });
+        }
+
+        // bookings Collection tripStatus Update
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { tripStatus: "Completed" } }
+        );
+
+        res.send({ message: "Trip finished successfully" });
+      } catch (error) {
+        console.error("Error finishing trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to finish trip", error: error.message });
+      }
+    });
+
+    // Get driver assignments by email
+    app.get("/driver-assignments/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { driverEmail: email };
+        const assignments = await driverAssignmentsCollection
+          .find(query)
+          .toArray();
+        res.send(assignments);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Failed to fetch driver assignments", error });
+      }
+    });
+
+    // Get trip history for a specific driver
+    app.get('/trip-history/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { driverEmail: email, tripStatus: 'Completed' };
+        const trips = await driverAssignmentsCollection.find(query).toArray();
+        res.status(200).send(trips);
+      } catch (error) {
+        console.error('Error fetching trip history:', error);
+        res.status(500).send({ message: 'Failed to fetch trip history', error });
       }
     });
 
@@ -477,6 +594,42 @@ async function run() {
         res
           .status(500)
           .send({ message: 'Failed to pick trip', error: error.message });
+      }
+    });
+
+    // Cancel Trip
+    app.post("/cancel-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // Check if the booking exists and is still available
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!booking) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
+        if (booking.driver !== "Not Assigned") {
+          return res.status(400).send({ message: "Trip is already assigned" });
+        }
+
+        // Add the driver's email to canceledByDrivers array, avoiding duplicates
+        const updateResult = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $addToSet: { canceledByDrivers: driverEmail } }
+        );
+
+        if (updateResult.modifiedCount === 0) {
+          return res.status(400).send({ message: "Failed to cancel trip" });
+        }
+
+        res.send({ message: "Trip canceled successfully for this driver" });
+      } catch (error) {
+        console.error("Error canceling trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to cancel trip", error: error.message });
       }
     });
 
