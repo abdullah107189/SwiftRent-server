@@ -569,6 +569,12 @@ async function run() {
       }
     });
 
+    // GET route to fetch all bookings
+    app.get('/bookings', async (req, res) => {
+      const result = await bookingsCollection.find().toArray();
+      res.send(result);
+    });
+
     // Cancel Payment Callback
     app.post('/payment-cancel/:tran_id', async (req, res) => {
       const { tran_id } = req.params;
