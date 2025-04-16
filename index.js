@@ -432,6 +432,19 @@ async function run() {
       }
     });
 
+    // Get trip history for a specific driver
+    app.get('/trip-history/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { driverEmail: email, tripStatus: 'Completed' };
+        const trips = await driverAssignmentsCollection.find(query).toArray();
+        res.status(200).send(trips);
+      } catch (error) {
+        console.error('Error fetching trip history:', error);
+        res.status(500).send({ message: 'Failed to fetch trip history', error });
+      }
+    });
+
     // Pick Trip
     app.post("/pick-trip/:id", async (req, res) => {
       const id = req.params.id;
