@@ -1,7 +1,7 @@
 const express = require("express");
 const { ObjectId } = require("mongodb");
 
-const SSLCommerzPayment = require('sslcommerz-lts')
+const SSLCommerzPayment = require("sslcommerz-lts");
 
 require("dotenv").config();
 const moment = require("moment-timezone");
@@ -10,6 +10,16 @@ const moment = require("moment-timezone");
 const app = express();
 const port = 3000;
 const cors = require("cors");
+const http = require("http");
+const server = http.createServer(app);
+
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 // middleware
 app.use(cors());
@@ -29,9 +39,9 @@ const client = new MongoClient(uri, {
   },
 });
 
-const store_id = process.env.STORE_ID;  
-const store_passwd = process.env.STORE_PASSWD; 
-const is_live = false //true for live, false for sandbox
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASSWD;
+const is_live = false; //true for live, false for sandbox
 
 async function run() {
   try {
@@ -43,6 +53,79 @@ async function run() {
     const bookingsCollection = database.collection("bookings");
     const reviewsCollection = database.collection("reviews");
     const aboutCollection = database.collection("about");
+    const chatCollection = database.collection("chats");
+
+    // ==== Socket.IO live chat =====
+
+    io.on("connection", (socket) => {
+      console.log("User connected");
+
+      // Join room
+      socket.on("join", async ({ uid, role }) => {
+        socket.join(uid);
+
+        if (role === "Admin") {
+          // Send all messages to admin
+          const chats = await chatCollection.find().toArray();
+          socket.emit("initialMessages", chats);
+
+          // Get list of unique users who sent messages
+          const uniqueUsers = await chatCollection
+            .aggregate([
+              {
+                $match: { role: { $ne: "Admin" } }, // Only customers
+              },
+              {
+                $group: {
+                  _id: "$senderUid",
+                  name: { $first: "$senderName" },
+                  photo: { $first: "$senderPhoto" },
+                },
+              },
+            ])
+            .toArray();
+
+          socket.emit("userList", uniqueUsers);
+        } else {
+          // Send only messages relevant to this user
+          const chats = await chatCollection
+            .find({
+              $or: [{ senderUid: uid }, { receiverUid: uid }],
+            })
+            .toArray();
+          socket.emit("initialMessages", chats);
+        }
+      });
+
+      // Load messages for a specific user (used by Admin)
+      socket.on("loadUserMessages", async (userUid) => {
+        const chats = await chatCollection
+          .find({
+            $or: [{ senderUid: userUid }, { receiverUid: userUid }],
+          })
+          .toArray();
+
+        socket.emit("userMessages", { userUid, chats });
+      });
+
+      // Handle chat message
+      socket.on("chatMessage", async (msg) => {
+        const enrichedMsg = {
+          ...msg,
+          senderName: msg.senderName || "",
+          senderPhoto: msg.senderPhoto || "",
+          time: new Date(),
+        };
+
+        await chatCollection.insertOne(enrichedMsg);
+
+        if (msg.role === "Admin") {
+          io.to(msg.receiverUid).emit("chatMessage", enrichedMsg);
+        } else {
+          io.emit("chatMessage", enrichedMsg);
+        }
+      });
+    });
 
     //user delete
     app.delete("/user-delete/:id", async (req, res) => {
@@ -311,6 +394,6 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
