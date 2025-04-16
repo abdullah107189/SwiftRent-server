@@ -1,7 +1,9 @@
 const express = require('express');
 const { ObjectId } = require('mongodb');
 
+
 const SSLCommerzPayment = require('sslcommerz-lts');
+
 
 require('dotenv').config();
 const moment = require('moment-timezone');
@@ -9,7 +11,19 @@ const moment = require('moment-timezone');
 // const cookieParser = require("cookie-parser");
 const app = express();
 const port = 3000;
-const cors = require('cors');
+
+const cors = require("cors");
+const http = require("http");
+const server = http.createServer(app);
+
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
 
 // middleware
 app.use(cors());
@@ -40,15 +54,90 @@ async function run() {
     });
     // await client.connect();
 
-    const database = client.db('SwiftRent-DB');
-    const userInfoCollection = database.collection('usersInfo');
-    const carsCollection = database.collection('cars');
-    const bookingsCollection = database.collection('bookings');
-    const reviewsCollection = database.collection('reviews');
-    const aboutCollection = database.collection('about');
+
+    const database = client.db("SwiftRent-DB");
+    const userInfoCollection = database.collection("usersInfo");
+    const carsCollection = database.collection("cars");
+    const bookingsCollection = database.collection("bookings");
+    const reviewsCollection = database.collection("reviews");
+    const aboutCollection = database.collection("about");
+    const chatCollection = database.collection("chats");
     const paymentsCollection = database.collection('payments');
     const driverAssignmentsCollection =
       database.collection('driverAssignments');
+
+    // ==== Socket.IO live chat =====
+
+    io.on("connection", (socket) => {
+      console.log("User connected");
+
+      // Join room
+      socket.on("join", async ({ uid, role }) => {
+        socket.join(uid);
+
+        if (role === "Admin") {
+          // Send all messages to admin
+          const chats = await chatCollection.find().toArray();
+          socket.emit("initialMessages", chats);
+
+          // Get list of unique users who sent messages
+          const uniqueUsers = await chatCollection
+            .aggregate([
+              {
+                $match: { role: { $ne: "Admin" } }, // Only customers
+              },
+              {
+                $group: {
+                  _id: "$senderUid",
+                  name: { $first: "$senderName" },
+                  photo: { $first: "$senderPhoto" },
+                },
+              },
+            ])
+            .toArray();
+
+          socket.emit("userList", uniqueUsers);
+        } else {
+          // Send only messages relevant to this user
+          const chats = await chatCollection
+            .find({
+              $or: [{ senderUid: uid }, { receiverUid: uid }],
+            })
+            .toArray();
+          socket.emit("initialMessages", chats);
+        }
+      });
+
+      // Load messages for a specific user (used by Admin)
+      socket.on("loadUserMessages", async (userUid) => {
+        const chats = await chatCollection
+          .find({
+            $or: [{ senderUid: userUid }, { receiverUid: userUid }],
+          })
+          .toArray();
+
+        socket.emit("userMessages", { userUid, chats });
+      });
+
+      // Handle chat message
+      socket.on("chatMessage", async (msg) => {
+        const enrichedMsg = {
+          ...msg,
+          senderName: msg.senderName || "",
+          senderPhoto: msg.senderPhoto || "",
+          time: new Date(),
+        };
+
+        await chatCollection.insertOne(enrichedMsg);
+
+        if (msg.role === "Admin") {
+          io.to(msg.receiverUid).emit("chatMessage", enrichedMsg);
+        } else {
+          io.emit("chatMessage", enrichedMsg);
+        }
+      });
+    });
+
 
     //user delete
     app.delete('/user-delete/:id', async (req, res) => {
@@ -155,7 +244,19 @@ async function run() {
     });
 
     // cars related filter, sort and searching
-    app.get('/cars', async (req, res) => {
+
+    app.get("/all-cars", async (req, res) => {
+      try {
+        const users = await carsCollection.find().toArray();
+
+        res.status(200).send(users);
+      } catch (error) {
+        console.error("Error fetching cars:", error);
+        res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
+    app.get("/cars", async (req, res) => {
+
       try {
         const query = {};
         const { search = '' } = req.query;
@@ -353,9 +454,15 @@ async function run() {
       res.send(result);
     });
 
-    // Booking related API
-    app.post('/book-auto', async (req, res) => {
-      const booking = req.body;
+
+    // Booking related APIs
+    app.post("/book-auto", async (req, res) => {
+      const booking = {
+        ...req.body,
+        driver: "Not Assigned",
+        canceledByDrivers: [],
+      };
+
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
@@ -409,16 +516,115 @@ async function run() {
       }
     });
 
-    // Driver related API
-    app.get('/available-trips', async (req, res) => {
+    // Driver related APIs
+    app.get("/available-trips", async (req, res) => {
       try {
-        const query = { driver: 'Not Assigned' };
+        const email = req.query.email;
+        if (!email) {
+          return res.status(400).send({ message: "Email is required" });
+        }
+        const query = {
+          driver: "Not Assigned",
+          canceledByDrivers: { $nin: [email] },
+        };
+
         const availableTrips = await bookingsCollection.find(query).toArray();
         res.send(availableTrips);
       } catch (error) {
         res
           .status(500)
           .send({ message: 'Failed to fetch available trips', error });
+      }
+    });
+
+    // Start Trip
+    app.post("/start-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // driverAssignments Collection tripStatus Update
+        const assignmentUpdate = await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail, tripStatus: "Booked" },
+          { $set: { tripStatus: "Started" } }
+        );
+
+        if (assignmentUpdate.matchedCount === 0) {
+          return res.status(400).send({ message: "Trip cannot be started" });
+        }
+
+        // bookings Collection tripStatus Update
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { tripStatus: "Started" } }
+        );
+
+        res.send({ message: "Trip started successfully" });
+      } catch (error) {
+        console.error("Error starting trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to start trip", error: error.message });
+      }
+    });
+
+    // Finish Trip
+    app.post("/finish-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // driverAssignments Collection tripStatus UpDate
+        const assignmentUpdate = await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail, tripStatus: "Started" },
+          { $set: { tripStatus: "Completed" } }
+        );
+
+        if (assignmentUpdate.matchedCount === 0) {
+          return res.status(400).send({ message: "Trip cannot be finished" });
+        }
+
+        // bookings Collection tripStatus Update
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { tripStatus: "Completed" } }
+        );
+
+        res.send({ message: "Trip finished successfully" });
+      } catch (error) {
+        console.error("Error finishing trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to finish trip", error: error.message });
+      }
+    });
+
+    // Get driver assignments by email
+    app.get("/driver-assignments/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { driverEmail: email };
+        const assignments = await driverAssignmentsCollection
+          .find(query)
+          .toArray();
+        res.send(assignments);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ message: "Failed to fetch driver assignments", error });
+      }
+    });
+
+    // Get trip history for a specific driver
+    app.get('/trip-history/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { driverEmail: email, tripStatus: 'Completed' };
+        const trips = await driverAssignmentsCollection.find(query).toArray();
+        res.status(200).send(trips);
+      } catch (error) {
+        console.error('Error fetching trip history:', error);
+        res.status(500).send({ message: 'Failed to fetch trip history', error });
       }
     });
 
@@ -477,6 +683,42 @@ async function run() {
         res
           .status(500)
           .send({ message: 'Failed to pick trip', error: error.message });
+      }
+    });
+
+    // Cancel Trip
+    app.post("/cancel-trip/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        // Check if the booking exists and is still available
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!booking) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
+        if (booking.driver !== "Not Assigned") {
+          return res.status(400).send({ message: "Trip is already assigned" });
+        }
+
+        // Add the driver's email to canceledByDrivers array, avoiding duplicates
+        const updateResult = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $addToSet: { canceledByDrivers: driverEmail } }
+        );
+
+        if (updateResult.modifiedCount === 0) {
+          return res.status(400).send({ message: "Failed to cancel trip" });
+        }
+
+        res.send({ message: "Trip canceled successfully for this driver" });
+      } catch (error) {
+        console.error("Error canceling trip:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to cancel trip", error: error.message });
       }
     });
 
@@ -657,6 +899,6 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
