@@ -565,6 +565,7 @@ async function run() {
     });
 
     // get all bookings
+
     app.get("/all-booking", async (req, res) => {
       const bookings = await bookingsCollection.find().toArray();
       res.send(bookings);
