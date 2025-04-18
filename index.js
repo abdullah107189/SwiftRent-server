@@ -251,9 +251,21 @@ async function run() {
       }
     });
 
+    // car tental types rout
+    app.get("/rental-typs", async (req, res) => {
+      try {
+        const cars = await carsCollection
+          .find()
+          .sort({ _id: 1 })
+          .limit(6)
+          .toArray();
 
-    
-
+        res.status(200).send(cars);
+      } catch (error) {
+        console.error("Error fetching cars:", error);
+        res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
 
     // -----
     app.get("/category-distribution", async (req, res) => {
@@ -282,6 +294,36 @@ async function run() {
         res
           .status(500)
           .send({ message: "Failed to fetch category distribution" });
+      }
+    });
+    //
+    app.get("/sales-by-channel", async (req, res) => {
+      try {
+        const salesByChannel = await bookingsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$channel",
+                totalSales: { $sum: "$price" },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                name: "$_id",
+                value: "$totalSales",
+              },
+            },
+            {
+              $sort: { value: -1 }, // Optional: highest to lowest
+            },
+          ])
+          .toArray();
+
+        res.send(salesByChannel);
+      } catch (error) {
+        console.error("Error fetching sales by channel:", error);
+        res.status(500).send({ message: "Failed to fetch sales by channel" });
       }
     });
 
