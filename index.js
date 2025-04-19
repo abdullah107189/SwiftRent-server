@@ -607,6 +607,7 @@ async function run() {
     });
 
     // get all bookings
+
     app.get("/all-booking", async (req, res) => {
       const bookings = await bookingsCollection.find().toArray();
       res.send(bookings);
@@ -955,6 +956,12 @@ async function run() {
           error: error.message,
         });
       }
+    });
+
+    // GET route to fetch all bookings
+    app.get('/bookings', async (req, res) => {
+      const result = await bookingsCollection.find().toArray();
+      res.send(result);
     });
 
     // Cancel Payment Callback
