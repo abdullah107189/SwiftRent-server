@@ -718,6 +718,44 @@ async function run() {
       }
     });
 
+    // Confirm Hand Cash Payment
+    app.post("/finish-trip-with-hand-cash/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+          paymentStatus: "Pending",
+        });
+        if (!booking) {
+          return res
+            .status(400)
+            .send({ message: "Booking not found or payment has been made." });
+        }
+
+        // Updating payment status and trip status
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { paymentStatus: "Success", tripStatus: "Completed" } }
+        );
+
+        // Updating driver assignments
+        await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail },
+          { $set: { tripStatus: "Completed", paymentStatus: "Success" } }
+        );
+
+        res.send({ message: "Hand cash confirmed, trip ended" });
+      } catch (error) {
+        console.error("Failed to confirm hand cash:", error);
+        res.status(500).send({
+          message: "Failed to confirm hand cash",
+          error: error.message,
+        });
+      }
+    });
+
     // Generate a random transaction ID
     function generateTrxId(length = 12) {
       const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -806,6 +844,13 @@ async function run() {
         });
       }
     });
+
+    // GET route to fetch all bookings
+    app.get("/bookings", async (req, res) => {
+      const result = await bookingsCollection.find().toArray();
+      res.send(result);
+    });
+
 
     // Cancel Payment Callback
     app.post("/payment-cancel/:tran_id", async (req, res) => {
