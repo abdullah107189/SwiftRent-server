@@ -278,6 +278,36 @@ async function run() {
           .send({ message: "Failed to fetch category distribution" });
       }
     });
+    //
+    app.get("/sales-by-channel", async (req, res) => {
+      try {
+        const salesByChannel = await bookingsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$channel",
+                totalSales: { $sum: "$price" },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                name: "$_id",
+                value: "$totalSales",
+              },
+            },
+            {
+              $sort: { value: -1 }, // Optional: highest to lowest
+            },
+          ])
+          .toArray();
+
+        res.send(salesByChannel);
+      } catch (error) {
+        console.error("Error fetching sales by channel:", error);
+        res.status(500).send({ message: "Failed to fetch sales by channel" });
+      }
+    });
 
     // Get conversion rate
     app.get("/conversion-rate", async (req, res) => {
@@ -559,6 +589,7 @@ async function run() {
     });
 
     // get all bookings
+
     app.get("/all-booking", async (req, res) => {
       const bookings = await bookingsCollection.find().toArray();
       res.send(bookings);
