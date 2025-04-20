@@ -61,6 +61,7 @@ async function run() {
     const paymentsCollection = database.collection("payments");
     const driverAssignmentsCollection =
       database.collection("driverAssignments");
+    const blogsCollection = database.collection("blogs");
 
     // ==== Socket.IO live chat =====
 
@@ -242,160 +243,14 @@ async function run() {
 
     app.get("/all-cars", async (req, res) => {
       try {
-        const cars = await carsCollection.find().toArray();
+        const users = await carsCollection.find().toArray();
 
-        res.status(200).send(cars);
+        res.status(200).send(users);
       } catch (error) {
         console.error("Error fetching cars:", error);
         res.status(500).send({ message: "Failed to fetch cars" });
       }
     });
-
-    // car tental types rout
-    app.get("/rental-typs", async (req, res) => {
-      try {
-        const cars = await carsCollection
-          .find()
-          .sort({ _id: 1 })
-          .limit(6)
-          .toArray();
-
-        res.status(200).send(cars);
-      } catch (error) {
-        console.error("Error fetching cars:", error);
-        res.status(500).send({ message: "Failed to fetch cars" });
-      }
-    });
-
-    // -----
-    app.get("/category-distribution", async (req, res) => {
-      try {
-        const cars = await carsCollection
-          .find(
-            {},
-            {
-              projection: {
-                brand: 1,
-                seats: 1,
-                _id: 0,
-              },
-            }
-          )
-          .toArray();
-
-        const formatted = cars.map((car) => ({
-          name: car.brand,
-          value: car.seats,
-        }));
-
-        res.status(200).send(formatted);
-      } catch (error) {
-        console.error("Error fetching category distribution:", error);
-        res
-          .status(500)
-          .send({ message: "Failed to fetch category distribution" });
-      }
-    });
-    //
-    app.get("/sales-by-channel", async (req, res) => {
-      try {
-        const salesByChannel = await bookingsCollection
-          .aggregate([
-            {
-              $group: {
-                _id: "$channel",
-                totalSales: { $sum: "$price" },
-              },
-            },
-            {
-              $project: {
-                _id: 0,
-                name: "$_id",
-                value: "$totalSales",
-              },
-            },
-            {
-              $sort: { value: -1 }, // Optional: highest to lowest
-            },
-          ])
-          .toArray();
-
-        res.send(salesByChannel);
-      } catch (error) {
-        console.error("Error fetching sales by channel:", error);
-        res.status(500).send({ message: "Failed to fetch sales by channel" });
-      }
-    });
-
-    // Get conversion rate
-    app.get("/conversion-rate", async (req, res) => {
-      try {
-        const allUsers = await userInfoCollection.find().toArray();
-        const allBookings = await bookingsCollection.find().toArray();
-
-        const totalUsers = allUsers.length;
-        const totalBookings = allBookings.length;
-
-        const conversionRate =
-          totalUsers > 0 ? ((totalBookings / totalUsers) * 100).toFixed(2) : 0;
-
-        res.status(200).send({
-          totalUsers,
-          totalBookings,
-          conversionRate: `${conversionRate}%`,
-        });
-      } catch (error) {
-        console.error("Error calculating conversion rate:", error);
-        res
-          .status(500)
-          .send({ message: "Failed to calculate conversion rate" });
-      }
-    });
-
-    // sales overview
-    app.get("/monthly-sales", async (req, res) => {
-      try {
-        const monthlySales = await bookingsCollection
-          .aggregate([
-            {
-              $group: {
-                _id: { $month: "$date" },
-                totalSales: { $sum: "$price" },
-              },
-            },
-            {
-              $sort: { _id: 1 },
-            },
-          ])
-          .toArray();
-
-        const monthNames = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-
-        const formattedData = monthlySales.map((item) => ({
-          month: monthNames[item._id - 1],
-          sales: item.totalSales,
-        }));
-
-        res.send(formattedData);
-      } catch (error) {
-        console.error("Error getting monthly sales:", error);
-        res.status(500).send({ message: "Failed to fetch monthly sales" });
-      }
-    });
-
     app.get("/cars", async (req, res) => {
       try {
         const query = {};
@@ -607,12 +462,6 @@ async function run() {
     });
 
     // get all bookings
-
-    app.get("/all-booking", async (req, res) => {
-      const bookings = await bookingsCollection.find().toArray();
-      res.send(bookings);
-    });
-
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -958,12 +807,6 @@ async function run() {
       }
     });
 
-    // GET route to fetch all bookings
-    app.get('/bookings', async (req, res) => {
-      const result = await bookingsCollection.find().toArray();
-      res.send(result);
-    });
-
     // Cancel Payment Callback
     app.post("/payment-cancel/:tran_id", async (req, res) => {
       const { tran_id } = req.params;
@@ -1031,6 +874,27 @@ async function run() {
       } catch (err) {
         console.error("Payment init error:", err);
         return res.status(500).json({ message: "Could not initiate payment" });
+      }
+    });
+
+    // blogs related api
+    app.post("/blogs", async (req, res) => {
+      try {
+        const { title, category, desc, content, coverImage, date } = req.body;
+
+        if (!title || !category || !desc || !content || !coverImage) {
+          return res
+            .status(400)
+            .json({ message: "All fields including image are required." });
+        }
+
+        const newBlog = { title, category, desc, content, coverImage, date };
+
+        const result = await blogsCollection.insertOne(newBlog);
+        res.send({ insertedId: result.insertedId });
+      } catch (error) {
+        console.error("Error inserting blog:", error);
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
