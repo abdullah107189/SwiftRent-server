@@ -61,6 +61,7 @@ async function run() {
     const paymentsCollection = database.collection("payments");
     const driverAssignmentsCollection =
       database.collection("driverAssignments");
+    const blogsCollection = database.collection("blogs");
 
     // ==== Socket.IO live chat =====
 
@@ -240,9 +241,9 @@ async function run() {
 
     app.get("/all-cars", async (req, res) => {
       try {
-        const cars = await carsCollection.find().toArray();
+        const users = await carsCollection.find().toArray();
 
-        res.status(200).send(cars);
+        res.status(200).send(users);
       } catch (error) {
         // console.error("Error fetching cars:", error);
         res.status(500).send({ message: "Failed to fetch cars" });
@@ -460,7 +461,7 @@ async function run() {
 
         res.send(cars);
       } catch (error) {
-        res.status(500).send({ message: "Failed to fetch carssssss", error });
+        res.status(500).send({ message: "Failed to fetch cars", error });
       }
     });
 
@@ -589,12 +590,6 @@ async function run() {
     });
 
     // get all bookings
-
-    app.get("/all-booking", async (req, res) => {
-      const bookings = await bookingsCollection.find().toArray();
-      res.send(bookings);
-    });
-
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -1014,6 +1009,27 @@ async function run() {
         // console.error("Payment init error:", err);
 
         return res.status(500).json({ message: "Could not initiate payment" });
+      }
+    });
+
+    // blogs related api
+    app.post("/blogs", async (req, res) => {
+      try {
+        const { title, category, desc, content, coverImage, date } = req.body;
+
+        if (!title || !category || !desc || !content || !coverImage) {
+          return res
+            .status(400)
+            .json({ message: "All fields including image are required." });
+        }
+
+        const newBlog = { title, category, desc, content, coverImage, date };
+
+        const result = await blogsCollection.insertOne(newBlog);
+        res.send({ insertedId: result.insertedId });
+      } catch (error) {
+        console.error("Error inserting blog:", error);
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
