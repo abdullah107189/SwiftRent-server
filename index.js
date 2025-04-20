@@ -816,6 +816,17 @@ async function run() {
           { $set: { paymentStatus: "Success" } }
         );
 
+        // Find and update the driver assignment
+        const driverAssignment = await driverAssignmentsCollection.findOne({
+          bookingId: tran_id,
+        });
+        if (driverAssignment) {
+          await driverAssignmentsCollection.updateOne(
+            { bookingId: tran_id },
+            { $set: { paymentStatus: "Success" } }
+          );
+        }
+
         res.redirect(`${process.env.CLIENT_URL}/dashboard/payments`);
         console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
         //payment-success/${tran_id}
