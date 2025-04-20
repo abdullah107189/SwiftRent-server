@@ -65,8 +65,6 @@ async function run() {
     // ==== Socket.IO live chat =====
 
     io.on("connection", (socket) => {
-      console.log("User connected");
-
       // Join room
       socket.on("join", async ({ uid, role }) => {
         socket.join(uid);
@@ -155,7 +153,7 @@ async function run() {
 
         res.status(200).send(users);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        // console.error("Error fetching users:", error);
         res.status(500).send({ message: "Failed to fetch users" });
       }
     });
@@ -246,14 +244,10 @@ async function run() {
 
         res.status(200).send(cars);
       } catch (error) {
-        console.error("Error fetching cars:", error);
+        // console.error("Error fetching cars:", error);
         res.status(500).send({ message: "Failed to fetch cars" });
       }
     });
-
-
-    
-
 
     // -----
     app.get("/category-distribution", async (req, res) => {
@@ -278,7 +272,7 @@ async function run() {
 
         res.status(200).send(formatted);
       } catch (error) {
-        console.error("Error fetching category distribution:", error);
+        // console.error("Error fetching category distribution:", error);
         res
           .status(500)
           .send({ message: "Failed to fetch category distribution" });
@@ -303,7 +297,7 @@ async function run() {
           conversionRate: `${conversionRate}%`,
         });
       } catch (error) {
-        console.error("Error calculating conversion rate:", error);
+        // console.error("Error calculating conversion rate:", error);
         res
           .status(500)
           .send({ message: "Failed to calculate conversion rate" });
@@ -349,7 +343,7 @@ async function run() {
 
         res.send(formattedData);
       } catch (error) {
-        console.error("Error getting monthly sales:", error);
+        // console.error("Error getting monthly sales:", error);
         res.status(500).send({ message: "Failed to fetch monthly sales" });
       }
     });
@@ -468,7 +462,7 @@ async function run() {
         );
         res.send(result);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         res
           .status(500)
           .send({ message: "Failed to update car availability", error });
@@ -542,7 +536,7 @@ async function run() {
         const result = await carsCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         res.status(500).send({ message: "Failed to delete car" });
       }
     });
@@ -663,7 +657,7 @@ async function run() {
 
         res.send({ message: "Trip started successfully" });
       } catch (error) {
-        console.error("Error starting trip:", error);
+        // console.error("Error starting trip:", error);
         res
           .status(500)
           .send({ message: "Failed to start trip", error: error.message });
@@ -694,7 +688,7 @@ async function run() {
 
         res.send({ message: "Trip finished successfully" });
       } catch (error) {
-        console.error("Error finishing trip:", error);
+        // console.error("Error finishing trip:", error);
         res
           .status(500)
           .send({ message: "Failed to finish trip", error: error.message });
@@ -725,7 +719,7 @@ async function run() {
         const trips = await driverAssignmentsCollection.find(query).toArray();
         res.status(200).send(trips);
       } catch (error) {
-        console.error("Error fetching trip history:", error);
+        // console.error("Error fetching trip history:", error);
         res
           .status(500)
           .send({ message: "Failed to fetch trip history", error });
@@ -783,7 +777,7 @@ async function run() {
         await driverAssignmentsCollection.insertOne(assignment);
         res.send({ message: "Trip picked successfully" });
       } catch (error) {
-        console.error("Error picking trip:", error);
+        // console.error("Error picking trip:", error);
         res
           .status(500)
           .send({ message: "Failed to pick trip", error: error.message });
@@ -819,7 +813,7 @@ async function run() {
 
         res.send({ message: "Trip canceled successfully for this driver" });
       } catch (error) {
-        console.error("Error canceling trip:", error);
+        // console.error("Error canceling trip:", error);
         res
           .status(500)
           .send({ message: "Failed to cancel trip", error: error.message });
@@ -887,10 +881,10 @@ async function run() {
         );
 
         res.redirect(`${process.env.CLIENT_URL}/dashboard/payments`);
-        console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
+        // console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
         //payment-success/${tran_id}
       } catch (error) {
-        console.error("Payment success saving error:", error);
+        // console.error("Payment success saving error:", error);
         res.status(500).json({ message: "Internal Server Error" });
       }
     });
@@ -907,7 +901,7 @@ async function run() {
 
         res.status(200).json({ message: "Payment failed and handled." });
       } catch (error) {
-        console.error("Payment fail handling error:", error);
+        // console.error("Payment fail handling error:", error);
         res.status(500).json({
           message: "Error handling failed payment",
           error: error.message,
@@ -916,7 +910,7 @@ async function run() {
     });
 
     // GET route to fetch all bookings
-    app.get('/bookings', async (req, res) => {
+    app.get("/bookings", async (req, res) => {
       const result = await bookingsCollection.find().toArray();
       res.send(result);
     });
@@ -935,7 +929,7 @@ async function run() {
           .status(200)
           .json({ message: "Payment cancelled by user and handled." });
       } catch (error) {
-        console.error("Payment cancel handling error:", error);
+        // console.error("Payment cancel handling error:", error);
         res.status(500).json({
           message: "Error handling cancelled payment",
           error: error.message,
@@ -944,7 +938,7 @@ async function run() {
     });
 
     app.post("/create-payment/:bookingId", async (req, res) => {
-      console.log("Payment route hit", req.params.bookingId);
+      // console.log("Payment route hit", req.params.bookingId);
       try {
         const { bookingId } = req.params;
         const booking = await bookingsCollection.findOne({
@@ -986,7 +980,8 @@ async function run() {
         const response = await sslcommerz.init(paymentData);
         return res.json(response);
       } catch (err) {
-        console.error("Payment init error:", err);
+        // console.error("Payment init error:", err);
+
         return res.status(500).json({ message: "Could not initiate payment" });
       }
     });
