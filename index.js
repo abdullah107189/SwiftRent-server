@@ -61,12 +61,12 @@ async function run() {
     const paymentsCollection = database.collection("payments");
     const driverAssignmentsCollection =
       database.collection("driverAssignments");
+    const blogsCollection = database.collection("blogs");
+    const earningsCollection = database.collection("earnings");
 
     // ==== Socket.IO live chat =====
 
     io.on("connection", (socket) => {
-      console.log("User connected");
-
       // Join room
       socket.on("join", async ({ uid, role }) => {
         socket.join(uid);
@@ -155,7 +155,7 @@ async function run() {
 
         res.status(200).send(users);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        // console.error("Error fetching users:", error);
         res.status(500).send({ message: "Failed to fetch users" });
       }
     });
@@ -242,18 +242,14 @@ async function run() {
 
     app.get("/all-cars", async (req, res) => {
       try {
-        const cars = await carsCollection.find().toArray();
+        const users = await carsCollection.find().toArray();
 
-        res.status(200).send(cars);
+        res.status(200).send(users);
       } catch (error) {
-        console.error("Error fetching cars:", error);
+        // console.error("Error fetching cars:", error);
         res.status(500).send({ message: "Failed to fetch cars" });
       }
     });
-
-
-    
-
 
     // -----
     app.get("/category-distribution", async (req, res) => {
@@ -278,10 +274,40 @@ async function run() {
 
         res.status(200).send(formatted);
       } catch (error) {
-        console.error("Error fetching category distribution:", error);
+        // console.error("Error fetching category distribution:", error);
         res
           .status(500)
           .send({ message: "Failed to fetch category distribution" });
+      }
+    });
+    //
+    app.get("/sales-by-channel", async (req, res) => {
+      try {
+        const salesByChannel = await bookingsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$channel",
+                totalSales: { $sum: "$price" },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                name: "$_id",
+                value: "$totalSales",
+              },
+            },
+            {
+              $sort: { value: -1 }, // Optional: highest to lowest
+            },
+          ])
+          .toArray();
+
+        res.send(salesByChannel);
+      } catch (error) {
+        console.error("Error fetching sales by channel:", error);
+        res.status(500).send({ message: "Failed to fetch sales by channel" });
       }
     });
 
@@ -303,7 +329,7 @@ async function run() {
           conversionRate: `${conversionRate}%`,
         });
       } catch (error) {
-        console.error("Error calculating conversion rate:", error);
+        // console.error("Error calculating conversion rate:", error);
         res
           .status(500)
           .send({ message: "Failed to calculate conversion rate" });
@@ -349,7 +375,7 @@ async function run() {
 
         res.send(formattedData);
       } catch (error) {
-        console.error("Error getting monthly sales:", error);
+        // console.error("Error getting monthly sales:", error);
         res.status(500).send({ message: "Failed to fetch monthly sales" });
       }
     });
@@ -436,7 +462,7 @@ async function run() {
 
         res.send(cars);
       } catch (error) {
-        res.status(500).send({ message: "Failed to fetch carssssss", error });
+        res.status(500).send({ message: "Failed to fetch cars", error });
       }
     });
 
@@ -468,7 +494,7 @@ async function run() {
         );
         res.send(result);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         res
           .status(500)
           .send({ message: "Failed to update car availability", error });
@@ -542,7 +568,7 @@ async function run() {
         const result = await carsCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         res.status(500).send({ message: "Failed to delete car" });
       }
     });
@@ -565,12 +591,6 @@ async function run() {
     });
 
     // get all bookings
-
-    app.get("/all-booking", async (req, res) => {
-      const bookings = await bookingsCollection.find().toArray();
-      res.send(bookings);
-    });
-
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -640,6 +660,22 @@ async function run() {
       }
     });
 
+    // Get earnings for a specific driver
+    app.get("/earnings/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { userEmail: email, role: "Driver" };
+        const earnings = await earningsCollection
+          .find(query)
+          .sort({ paymentTime: -1 })
+          .toArray();
+        res.send(earnings);
+      } catch (error) {
+        console.error("Error fetching earnings:", error);
+        res.status(500).send({ message: "Failed to fetch earnings" });
+      }
+    });
+
     // Start Trip
     app.post("/start-trip/:id", async (req, res) => {
       const id = req.params.id;
@@ -664,7 +700,7 @@ async function run() {
 
         res.send({ message: "Trip started successfully" });
       } catch (error) {
-        console.error("Error starting trip:", error);
+        // console.error("Error starting trip:", error);
         res
           .status(500)
           .send({ message: "Failed to start trip", error: error.message });
@@ -695,7 +731,7 @@ async function run() {
 
         res.send({ message: "Trip finished successfully" });
       } catch (error) {
-        console.error("Error finishing trip:", error);
+        // console.error("Error finishing trip:", error);
         res
           .status(500)
           .send({ message: "Failed to finish trip", error: error.message });
@@ -726,7 +762,7 @@ async function run() {
         const trips = await driverAssignmentsCollection.find(query).toArray();
         res.status(200).send(trips);
       } catch (error) {
-        console.error("Error fetching trip history:", error);
+        // console.error("Error fetching trip history:", error);
         res
           .status(500)
           .send({ message: "Failed to fetch trip history", error });
@@ -784,7 +820,7 @@ async function run() {
         await driverAssignmentsCollection.insertOne(assignment);
         res.send({ message: "Trip picked successfully" });
       } catch (error) {
-        console.error("Error picking trip:", error);
+        // console.error("Error picking trip:", error);
         res
           .status(500)
           .send({ message: "Failed to pick trip", error: error.message });
@@ -820,10 +856,48 @@ async function run() {
 
         res.send({ message: "Trip canceled successfully for this driver" });
       } catch (error) {
-        console.error("Error canceling trip:", error);
+        // console.error("Error canceling trip:", error);
         res
           .status(500)
           .send({ message: "Failed to cancel trip", error: error.message });
+      }
+    });
+
+    // Confirm Hand Cash Payment
+    app.post("/finish-trip-with-hand-cash/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+          paymentStatus: "Pending",
+        });
+        if (!booking) {
+          return res
+            .status(400)
+            .send({ message: "Booking not found or payment has been made." });
+        }
+
+        // Updating payment status and trip status
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { paymentStatus: "Success", tripStatus: "Completed" } }
+        );
+
+        // Updating driver assignments
+        await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail },
+          { $set: { tripStatus: "Completed", paymentStatus: "Success" } }
+        );
+
+        res.send({ message: "Hand cash confirmed, trip ended" });
+      } catch (error) {
+        console.error("Failed to confirm hand cash:", error);
+        res.status(500).send({
+          message: "Failed to confirm hand cash",
+          error: error.message,
+        });
       }
     });
 
@@ -860,6 +934,16 @@ async function run() {
         if (!booking)
           return res.status(404).json({ message: "Booking not found" });
 
+        const driverAssignment = await driverAssignmentsCollection.findOne({
+          bookingId: tran_id,
+        });
+        if (!driverAssignment)
+          return res.status(404).json({ message: "Driver not assigned" });
+
+        const driverEmail = driverAssignment.driverEmail;
+        const driverAmount = booking.price * 0.75;
+        const adminAmount = booking.price * 0.25;
+
         // Prepare payment info to store
         const paymentInfo = {
           bookingId: tran_id,
@@ -881,17 +965,46 @@ async function run() {
         // Save to payments collection
         await paymentsCollection.insertOne(paymentInfo);
 
+        const earnings = [
+          {
+            userEmail: driverEmail,
+            role: "Driver",
+            amount: driverAmount,
+            bookingId: tran_id,
+            paymentTime: paymentInfo.paymentTime,
+          },
+          {
+            userEmail: "dsr102.purnendu@gmail.com",
+            role: "Admin",
+            amount: adminAmount,
+            bookingId: tran_id,
+            paymentTime: paymentInfo.paymentTime,
+          },
+        ];
+        await earningsCollection.insertMany(earnings);
+
         // Update paymentStatus in bookings collection
         await bookingsCollection.updateOne(
           { _id: new ObjectId(tran_id) },
           { $set: { paymentStatus: "Success" } }
         );
 
+        // Find and update the driver assignment
+        await driverAssignmentsCollection.findOne({
+          bookingId: tran_id,
+        });
+        if (driverAssignment) {
+          await driverAssignmentsCollection.updateOne(
+            { bookingId: tran_id },
+            { $set: { paymentStatus: "Success" } }
+          );
+        }
+
         res.redirect(`${process.env.CLIENT_URL}/dashboard/payments`);
-        console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
+        // console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
         //payment-success/${tran_id}
       } catch (error) {
-        console.error("Payment success saving error:", error);
+        // console.error("Payment success saving error:", error);
         res.status(500).json({ message: "Internal Server Error" });
       }
     });
@@ -908,7 +1021,7 @@ async function run() {
 
         res.status(200).json({ message: "Payment failed and handled." });
       } catch (error) {
-        console.error("Payment fail handling error:", error);
+        // console.error("Payment fail handling error:", error);
         res.status(500).json({
           message: "Error handling failed payment",
           error: error.message,
@@ -917,7 +1030,7 @@ async function run() {
     });
 
     // GET route to fetch all bookings
-    app.get('/bookings', async (req, res) => {
+    app.get("/bookings", async (req, res) => {
       const result = await bookingsCollection.find().toArray();
       res.send(result);
     });
@@ -936,7 +1049,7 @@ async function run() {
           .status(200)
           .json({ message: "Payment cancelled by user and handled." });
       } catch (error) {
-        console.error("Payment cancel handling error:", error);
+        // console.error("Payment cancel handling error:", error);
         res.status(500).json({
           message: "Error handling cancelled payment",
           error: error.message,
@@ -945,7 +1058,7 @@ async function run() {
     });
 
     app.post("/create-payment/:bookingId", async (req, res) => {
-      console.log("Payment route hit", req.params.bookingId);
+      // console.log("Payment route hit", req.params.bookingId);
       try {
         const { bookingId } = req.params;
         const booking = await bookingsCollection.findOne({
@@ -987,8 +1100,30 @@ async function run() {
         const response = await sslcommerz.init(paymentData);
         return res.json(response);
       } catch (err) {
-        console.error("Payment init error:", err);
+        // console.error("Payment init error:", err);
+
         return res.status(500).json({ message: "Could not initiate payment" });
+      }
+    });
+
+    // blogs related api
+    app.post("/blogs", async (req, res) => {
+      try {
+        const { title, category, desc, content, coverImage, date } = req.body;
+
+        if (!title || !category || !desc || !content || !coverImage) {
+          return res
+            .status(400)
+            .json({ message: "All fields including image are required." });
+        }
+
+        const newBlog = { title, category, desc, content, coverImage, date };
+
+        const result = await blogsCollection.insertOne(newBlog);
+        res.send({ insertedId: result.insertedId });
+      } catch (error) {
+        console.error("Error inserting blog:", error);
+        res.status(500).json({ message: "Internal server error" });
       }
     });
 
