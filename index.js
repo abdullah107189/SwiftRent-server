@@ -532,6 +532,22 @@ async function run() {
       }
     });
 
+    // Get earnings for a specific driver
+    app.get("/earnings/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { userEmail: email, role: "Driver" };
+        const earnings = await earningsCollection
+          .find(query)
+          .sort({ paymentTime: -1 })
+          .toArray();
+        res.send(earnings);
+      } catch (error) {
+        console.error("Error fetching earnings:", error);
+        res.status(500).send({ message: "Failed to fetch earnings" });
+      }
+    });
+
     // Start Trip
     app.post("/start-trip/:id", async (req, res) => {
       const id = req.params.id;
@@ -890,7 +906,6 @@ async function run() {
       const result = await bookingsCollection.find().toArray();
       res.send(result);
     });
-
 
     // Cancel Payment Callback
     app.post("/payment-cancel/:tran_id", async (req, res) => {
