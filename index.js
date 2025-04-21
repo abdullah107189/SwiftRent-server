@@ -62,6 +62,7 @@ async function run() {
     const driverAssignmentsCollection =
       database.collection("driverAssignments");
     const blogsCollection = database.collection("blogs");
+    const earningsCollection = database.collection("earnings");
 
     // ==== Socket.IO live chat =====
 
@@ -659,6 +660,22 @@ async function run() {
       }
     });
 
+    // Get earnings for a specific driver
+    app.get("/earnings/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const query = { userEmail: email, role: "Driver" };
+        const earnings = await earningsCollection
+          .find(query)
+          .sort({ paymentTime: -1 })
+          .toArray();
+        res.send(earnings);
+      } catch (error) {
+        console.error("Error fetching earnings:", error);
+        res.status(500).send({ message: "Failed to fetch earnings" });
+      }
+    });
+
     // Start Trip
     app.post("/start-trip/:id", async (req, res) => {
       const id = req.params.id;
@@ -846,6 +863,44 @@ async function run() {
       }
     });
 
+    // Confirm Hand Cash Payment
+    app.post("/finish-trip-with-hand-cash/:id", async (req, res) => {
+      const id = req.params.id;
+      const { driverEmail } = req.body;
+
+      try {
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+          paymentStatus: "Pending",
+        });
+        if (!booking) {
+          return res
+            .status(400)
+            .send({ message: "Booking not found or payment has been made." });
+        }
+
+        // Updating payment status and trip status
+        await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { paymentStatus: "Success", tripStatus: "Completed" } }
+        );
+
+        // Updating driver assignments
+        await driverAssignmentsCollection.updateOne(
+          { bookingId: id, driverEmail: driverEmail },
+          { $set: { tripStatus: "Completed", paymentStatus: "Success" } }
+        );
+
+        res.send({ message: "Hand cash confirmed, trip ended" });
+      } catch (error) {
+        console.error("Failed to confirm hand cash:", error);
+        res.status(500).send({
+          message: "Failed to confirm hand cash",
+          error: error.message,
+        });
+      }
+    });
+
     // Generate a random transaction ID
     function generateTrxId(length = 12) {
       const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -879,6 +934,16 @@ async function run() {
         if (!booking)
           return res.status(404).json({ message: "Booking not found" });
 
+        const driverAssignment = await driverAssignmentsCollection.findOne({
+          bookingId: tran_id,
+        });
+        if (!driverAssignment)
+          return res.status(404).json({ message: "Driver not assigned" });
+
+        const driverEmail = driverAssignment.driverEmail;
+        const driverAmount = booking.price * 0.75;
+        const adminAmount = booking.price * 0.25;
+
         // Prepare payment info to store
         const paymentInfo = {
           bookingId: tran_id,
@@ -900,11 +965,40 @@ async function run() {
         // Save to payments collection
         await paymentsCollection.insertOne(paymentInfo);
 
+        const earnings = [
+          {
+            userEmail: driverEmail,
+            role: "Driver",
+            amount: driverAmount,
+            bookingId: tran_id,
+            paymentTime: paymentInfo.paymentTime,
+          },
+          {
+            userEmail: "dsr102.purnendu@gmail.com",
+            role: "Admin",
+            amount: adminAmount,
+            bookingId: tran_id,
+            paymentTime: paymentInfo.paymentTime,
+          },
+        ];
+        await earningsCollection.insertMany(earnings);
+
         // Update paymentStatus in bookings collection
         await bookingsCollection.updateOne(
           { _id: new ObjectId(tran_id) },
           { $set: { paymentStatus: "Success" } }
         );
+
+        // Find and update the driver assignment
+        await driverAssignmentsCollection.findOne({
+          bookingId: tran_id,
+        });
+        if (driverAssignment) {
+          await driverAssignmentsCollection.updateOne(
+            { bookingId: tran_id },
+            { $set: { paymentStatus: "Success" } }
+          );
+        }
 
         res.redirect(`${process.env.CLIENT_URL}/dashboard/payments`);
         // console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
