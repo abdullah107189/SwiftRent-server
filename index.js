@@ -62,11 +62,12 @@ async function run() {
     const driverAssignmentsCollection =
       database.collection("driverAssignments");
     const blogsCollection = database.collection("blogs");
+    const earningsCollection = database.collection("earnings");
 
     // ==== Socket.IO live chat =====
 
     io.on("connection", (socket) => {
-      console.log("User connected");
+      // console.log("User connected");
 
       // Join room
       socket.on("join", async ({ uid, role }) => {
@@ -789,6 +790,16 @@ async function run() {
         if (!booking)
           return res.status(404).json({ message: "Booking not found" });
 
+        const driverAssignment = await driverAssignmentsCollection.findOne({
+          bookingId: tran_id,
+        });
+        if (!driverAssignment)
+          return res.status(404).json({ message: "Driver not assigned" });
+
+        const driverEmail = driverAssignment.driverEmail;
+        const driverAmount = booking.price * 0.75;
+        const adminAmount = booking.price * 0.25;
+
         // Prepare payment info to store
         const paymentInfo = {
           bookingId: tran_id,
@@ -810,6 +821,24 @@ async function run() {
         // Save to payments collection
         await paymentsCollection.insertOne(paymentInfo);
 
+        const earnings = [
+          {
+            userEmail: driverEmail,
+            role: "Driver",
+            amount: driverAmount,
+            bookingId: tran_id,
+            paymentTime: paymentInfo.paymentTime,
+          },
+          {
+            userEmail: "dsr102.purnendu@gmail.com",
+            role: "Admin",
+            amount: adminAmount,
+            bookingId: tran_id,
+            paymentTime: paymentInfo.paymentTime,
+          },
+        ];
+        await earningsCollection.insertMany(earnings);
+
         // Update paymentStatus in bookings collection
         await bookingsCollection.updateOne(
           { _id: new ObjectId(tran_id) },
@@ -817,7 +846,7 @@ async function run() {
         );
 
         // Find and update the driver assignment
-        const driverAssignment = await driverAssignmentsCollection.findOne({
+        await driverAssignmentsCollection.findOne({
           bookingId: tran_id,
         });
         if (driverAssignment) {
