@@ -251,6 +251,22 @@ async function run() {
       }
     });
 
+    // car tental types rout
+    app.get("/rental-typs", async (req, res) => {
+      try {
+        const cars = await carsCollection
+          .find()
+          .sort({ _id: 1 })
+          .limit(6)
+          .toArray();
+
+        res.status(200).send(cars);
+      } catch (error) {
+        console.error("Error fetching cars:", error);
+        res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
+
     // -----
     app.get("/category-distribution", async (req, res) => {
       try {
@@ -591,6 +607,37 @@ async function run() {
     });
 
     // get all bookings
+
+
+    app.get("/all-booking", async (req, res) => {
+      const bookings = await bookingsCollection.find().toArray();
+      res.send(bookings);
+    });
+
+    //  get user booking price
+    app.get("/all-bookingPrice/:email", async (req, res) => {
+      const email = req.params.email;
+      const userBookings = await bookingsCollection
+        .find({ email: email })
+        .toArray();
+
+      const totalBookingPrice = userBookings.reduce(
+        (sum, booking) => sum + (booking.price || 0),
+        0
+      );
+
+      res.send({ totalBookingPrice });
+    });
+
+    // user all booking
+    app.get("all-userBooking/:email", async (req, res) => {
+      const email = req.params.email;
+      const userBookings = await bookingsCollection
+        .find({ email: email })
+        .toArray();
+      res.send(userBookings);
+    });
+
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -920,6 +967,21 @@ async function run() {
         .sort({ paymentTime: -1 })
         .toArray();
       res.send(payments);
+    });
+
+    // total payments price
+    app.get("/totalPayments/:email", async (req, res) => {
+      const email = req.params.email;
+      const userBookings = await paymentsCollection
+        .find({ email: email })
+        .toArray();
+
+      const totalPaymentsPrice = userBookings.reduce(
+        (sum, booking) => sum + (booking.price || 0),
+        0
+      );
+
+      res.send({ totalPaymentsPrice });
     });
 
     // Success Payment Callback
