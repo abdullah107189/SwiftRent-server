@@ -613,6 +613,30 @@ async function run() {
       res.send(bookings);
     });
 
+    //  get user booking price
+    app.get("/all-bookingPrice/:email", async (req, res) => {
+      const email = req.params.email;
+      const userBookings = await bookingsCollection
+        .find({ email: email })
+        .toArray();
+
+      const totalBookingPrice = userBookings.reduce(
+        (sum, booking) => sum + (booking.price || 0),
+        0
+      );
+
+      res.send({ totalBookingPrice });
+    });
+
+    // user all booking
+    app.get("all-userBooking/:email", async (req, res) => {
+      const email = req.params.email;
+      const userBookings = await bookingsCollection
+        .find({ email: email })
+        .toArray();
+      res.send(userBookings);
+    });
+
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -890,6 +914,21 @@ async function run() {
       res.send(payments);
     });
 
+    // total payments price
+    app.get("/totalPayments/:email", async (req, res) => {
+      const email = req.params.email;
+      const userBookings = await paymentsCollection
+        .find({ email: email })
+        .toArray();
+
+      const totalPaymentsPrice = userBookings.reduce(
+        (sum, booking) => sum + (booking.price || 0),
+        0
+      );
+
+      res.send({ totalPaymentsPrice });
+    });
+
     // Success Payment Callback
     app.post("/payment-success/:tran_id", async (req, res) => {
       try {
@@ -959,7 +998,7 @@ async function run() {
     });
 
     // GET route to fetch all bookings
-    app.get('/bookings', async (req, res) => {
+    app.get("/bookings", async (req, res) => {
       const result = await bookingsCollection.find().toArray();
       res.send(result);
     });
