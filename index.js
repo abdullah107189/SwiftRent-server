@@ -67,8 +67,6 @@ async function run() {
     // ==== Socket.IO live chat =====
 
     io.on("connection", (socket) => {
-      // console.log("User connected");
-
       // Join room
       socket.on("join", async ({ uid, role }) => {
         socket.join(uid);
@@ -157,7 +155,7 @@ async function run() {
 
         res.status(200).send(users);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        // console.error("Error fetching users:", error);
         res.status(500).send({ message: "Failed to fetch users" });
       }
     });
@@ -248,10 +246,140 @@ async function run() {
 
         res.status(200).send(users);
       } catch (error) {
-        console.error("Error fetching cars:", error);
+        // console.error("Error fetching cars:", error);
         res.status(500).send({ message: "Failed to fetch cars" });
       }
     });
+
+    // -----
+    app.get("/category-distribution", async (req, res) => {
+      try {
+        const cars = await carsCollection
+          .find(
+            {},
+            {
+              projection: {
+                brand: 1,
+                seats: 1,
+                _id: 0,
+              },
+            }
+          )
+          .toArray();
+
+        const formatted = cars.map((car) => ({
+          name: car.brand,
+          value: car.seats,
+        }));
+
+        res.status(200).send(formatted);
+      } catch (error) {
+        // console.error("Error fetching category distribution:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch category distribution" });
+      }
+    });
+    //
+    app.get("/sales-by-channel", async (req, res) => {
+      try {
+        const salesByChannel = await bookingsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$channel",
+                totalSales: { $sum: "$price" },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                name: "$_id",
+                value: "$totalSales",
+              },
+            },
+            {
+              $sort: { value: -1 }, // Optional: highest to lowest
+            },
+          ])
+          .toArray();
+
+        res.send(salesByChannel);
+      } catch (error) {
+        console.error("Error fetching sales by channel:", error);
+        res.status(500).send({ message: "Failed to fetch sales by channel" });
+      }
+    });
+
+    // Get conversion rate
+    app.get("/conversion-rate", async (req, res) => {
+      try {
+        const allUsers = await userInfoCollection.find().toArray();
+        const allBookings = await bookingsCollection.find().toArray();
+
+        const totalUsers = allUsers.length;
+        const totalBookings = allBookings.length;
+
+        const conversionRate =
+          totalUsers > 0 ? ((totalBookings / totalUsers) * 100).toFixed(2) : 0;
+
+        res.status(200).send({
+          totalUsers,
+          totalBookings,
+          conversionRate: `${conversionRate}%`,
+        });
+      } catch (error) {
+        // console.error("Error calculating conversion rate:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to calculate conversion rate" });
+      }
+    });
+
+    // sales overview
+    app.get("/monthly-sales", async (req, res) => {
+      try {
+        const monthlySales = await bookingsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: { $month: "$date" },
+                totalSales: { $sum: "$price" },
+              },
+            },
+            {
+              $sort: { _id: 1 },
+            },
+          ])
+          .toArray();
+
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        const formattedData = monthlySales.map((item) => ({
+          month: monthNames[item._id - 1],
+          sales: item.totalSales,
+        }));
+
+        res.send(formattedData);
+      } catch (error) {
+        // console.error("Error getting monthly sales:", error);
+        res.status(500).send({ message: "Failed to fetch monthly sales" });
+      }
+    });
+
     app.get("/cars", async (req, res) => {
       try {
         const query = {};
@@ -334,7 +462,7 @@ async function run() {
 
         res.send(cars);
       } catch (error) {
-        res.status(500).send({ message: "Failed to fetch carssssss", error });
+        res.status(500).send({ message: "Failed to fetch cars", error });
       }
     });
 
@@ -366,7 +494,7 @@ async function run() {
         );
         res.send(result);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         res
           .status(500)
           .send({ message: "Failed to update car availability", error });
@@ -440,7 +568,7 @@ async function run() {
         const result = await carsCollection.deleteOne(query);
         res.send(result);
       } catch (error) {
-        console.error(error);
+        // console.error(error);
         res.status(500).send({ message: "Failed to delete car" });
       }
     });
@@ -572,7 +700,7 @@ async function run() {
 
         res.send({ message: "Trip started successfully" });
       } catch (error) {
-        console.error("Error starting trip:", error);
+        // console.error("Error starting trip:", error);
         res
           .status(500)
           .send({ message: "Failed to start trip", error: error.message });
@@ -603,7 +731,7 @@ async function run() {
 
         res.send({ message: "Trip finished successfully" });
       } catch (error) {
-        console.error("Error finishing trip:", error);
+        // console.error("Error finishing trip:", error);
         res
           .status(500)
           .send({ message: "Failed to finish trip", error: error.message });
@@ -634,7 +762,7 @@ async function run() {
         const trips = await driverAssignmentsCollection.find(query).toArray();
         res.status(200).send(trips);
       } catch (error) {
-        console.error("Error fetching trip history:", error);
+        // console.error("Error fetching trip history:", error);
         res
           .status(500)
           .send({ message: "Failed to fetch trip history", error });
@@ -692,7 +820,7 @@ async function run() {
         await driverAssignmentsCollection.insertOne(assignment);
         res.send({ message: "Trip picked successfully" });
       } catch (error) {
-        console.error("Error picking trip:", error);
+        // console.error("Error picking trip:", error);
         res
           .status(500)
           .send({ message: "Failed to pick trip", error: error.message });
@@ -728,7 +856,7 @@ async function run() {
 
         res.send({ message: "Trip canceled successfully for this driver" });
       } catch (error) {
-        console.error("Error canceling trip:", error);
+        // console.error("Error canceling trip:", error);
         res
           .status(500)
           .send({ message: "Failed to cancel trip", error: error.message });
@@ -873,10 +1001,10 @@ async function run() {
         }
 
         res.redirect(`${process.env.CLIENT_URL}/dashboard/payments`);
-        console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
+        // console.log("CLIENT_URL from env:", process.env.CLIENT_URL);
         //payment-success/${tran_id}
       } catch (error) {
-        console.error("Payment success saving error:", error);
+        // console.error("Payment success saving error:", error);
         res.status(500).json({ message: "Internal Server Error" });
       }
     });
@@ -893,7 +1021,7 @@ async function run() {
 
         res.status(200).json({ message: "Payment failed and handled." });
       } catch (error) {
-        console.error("Payment fail handling error:", error);
+        // console.error("Payment fail handling error:", error);
         res.status(500).json({
           message: "Error handling failed payment",
           error: error.message,
@@ -921,7 +1049,7 @@ async function run() {
           .status(200)
           .json({ message: "Payment cancelled by user and handled." });
       } catch (error) {
-        console.error("Payment cancel handling error:", error);
+        // console.error("Payment cancel handling error:", error);
         res.status(500).json({
           message: "Error handling cancelled payment",
           error: error.message,
@@ -930,7 +1058,7 @@ async function run() {
     });
 
     app.post("/create-payment/:bookingId", async (req, res) => {
-      console.log("Payment route hit", req.params.bookingId);
+      // console.log("Payment route hit", req.params.bookingId);
       try {
         const { bookingId } = req.params;
         const booking = await bookingsCollection.findOne({
@@ -972,7 +1100,8 @@ async function run() {
         const response = await sslcommerz.init(paymentData);
         return res.json(response);
       } catch (err) {
-        console.error("Payment init error:", err);
+        // console.error("Payment init error:", err);
+
         return res.status(500).json({ message: "Could not initiate payment" });
       }
     });
