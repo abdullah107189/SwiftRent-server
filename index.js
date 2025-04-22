@@ -592,6 +592,43 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
+
+    // update active status
+    app.patch("/changeActiveState", async (req, res) => {
+      const { status, email } = req.query;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      const isFind = await userInfoCollection.findOne({
+        "userInfo.email": email,
+      });
+
+      if (!isFind) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (isFind) {
+        if (status == "true") {
+          userInfoCollection.updateOne(
+            { "userInfo.email": email },
+            {
+              $set: {
+                isActive: true,
+              },
+            }
+          );
+        } else {
+          userInfoCollection.updateOne(
+            { "userInfo.email": email },
+            {
+              $set: {
+                isActive: false,
+              },
+            }
+          );
+        }
+      }
+    });
     //car detelt api
     app.delete("/cars/:id", async (req, res) => {
       try {
