@@ -181,7 +181,10 @@ async function run() {
       try {
         const role = req.params.role;
         const query = { "userInfo.role": role };
-        const result = await userInfoCollection.find(query).toArray();
+        const result = await userInfoCollection
+          .find(query)
+          .sort({ isActive: -1 })
+          .toArray();
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
@@ -194,7 +197,10 @@ async function run() {
       try {
         const role = req.params.role;
         const query = { "userInfo.role": role };
-        const result = await userInfoCollection.find(query).toArray();
+        const result = await userInfoCollection
+          .find(query)
+          .sort({ isActive: -1 })
+          .toArray();
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
@@ -606,7 +612,7 @@ async function run() {
       if (!isFind) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       if (isFind) {
         if (status == "true") {
           userInfoCollection.updateOne(
@@ -618,7 +624,7 @@ async function run() {
             }
           );
         } else {
-          userInfoCollection.updateOne(
+          userInfoCollection.updateMany(
             { "userInfo.email": email },
             {
               $set: {
