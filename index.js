@@ -81,7 +81,7 @@ async function run() {
           const uniqueUsers = await chatCollection
             .aggregate([
               {
-                $match: { role: { $ne: 'Admin' } }, // Only customers
+                $match: { role: { $ne: 'Admin' } },
               },
               {
                 $group: {
@@ -447,6 +447,30 @@ async function run() {
       const car = req.body;
       const result = await carsCollection.insertOne(car);
       res.send(result);
+    });
+
+    //car update api
+
+    app.patch('/cars-update/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log('Car ID:', id);
+      try {
+        const car = req.body;
+        const result = await carsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: car }
+        );
+
+        console.log('Update result:', result);
+        if (result.modifiedCount > 0) {
+          res.status(200).send(result);
+        } else {
+          res.status(400).send({ message: 'No changes made' });
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send({ message: 'Server Error', error: error.message });
+      }
     });
 
     // Booking related APIs
