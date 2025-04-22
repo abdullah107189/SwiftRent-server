@@ -848,6 +848,7 @@ async function run() {
           driverEmail: driverEmail,
           carName: booking.carName,
           carBrand: booking.carBrand,
+          carImage: booking.carImage,
           customerName: booking.fullName,
           customerEmail: booking.email,
           customerPhone: booking.phone,
