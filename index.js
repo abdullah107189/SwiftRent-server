@@ -251,6 +251,14 @@ async function run() {
       }
     });
 
+    app.get("/carsCount", async (req, res) => {
+      try {
+        const result = await carsCollection.estimatedDocumentCount();
+        res.send({ count: result });
+      } catch (error) {
+        console.log(error);
+      }
+    });
     // car tental types rout
     app.get("/rental-typs", async (req, res) => {
       try {
@@ -474,7 +482,15 @@ async function run() {
             break;
         }
 
-        const cars = await carsCollection.find(query).sort(sort).toArray();
+        // size and page
+        const size = parseInt(search.size);
+        const page = parseInt(search.page);
+        const cars = await carsCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .sort(sort)
+          .toArray();
 
         res.send(cars);
       } catch (error) {
@@ -607,7 +623,6 @@ async function run() {
     });
 
     // get all bookings
-
 
     app.get("/all-booking", async (req, res) => {
       const bookings = await bookingsCollection.find().toArray();
