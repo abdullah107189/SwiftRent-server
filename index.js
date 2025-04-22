@@ -193,8 +193,15 @@ async function run() {
     app.get('/customers/:role', async (req, res) => {
       try {
         const role = req.params.role;
-        const query = { 'userInfo.role': role };
+
+        const query = { "userInfo.role": role };
+        const result = await userInfoCollection
+          .find(query)
+          .sort({ isActive: -1 })
+          .toArray();
+
         const result = await userInfoCollection.find(query).toArray();
+
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: 'Server error', error: error.message });
@@ -206,8 +213,15 @@ async function run() {
     app.get('/drivers/:role', async (req, res) => {
       try {
         const role = req.params.role;
-        const query = { 'userInfo.role': role };
+
+        const query = { "userInfo.role": role };
+        const result = await userInfoCollection
+          .find(query)
+          .sort({ isActive: -1 })
+          .toArray();
+
         const result = await userInfoCollection.find(query).toArray();
+
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: 'Server error', error: error.message });
@@ -615,6 +629,43 @@ async function run() {
         res.send({ message: 'Last login updated successfully' });
       } catch (error) {
         res.status(500).send({ message: 'Internal Server Error' });
+      }
+    });
+
+    // update active status
+    app.patch("/changeActiveState", async (req, res) => {
+      const { status, email } = req.query;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      const isFind = await userInfoCollection.findOne({
+        "userInfo.email": email,
+      });
+
+      if (!isFind) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (isFind) {
+        if (status == "true") {
+          userInfoCollection.updateOne(
+            { "userInfo.email": email },
+            {
+              $set: {
+                isActive: true,
+              },
+            }
+          );
+        } else {
+          userInfoCollection.updateMany(
+            { "userInfo.email": email },
+            {
+              $set: {
+                isActive: false,
+              },
+            }
+          );
+        }
       }
     });
     //car detelt api
