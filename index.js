@@ -60,9 +60,12 @@ async function run() {
     const chatCollection = database.collection('chats');
     const paymentsCollection = database.collection('payments');
     const driverAssignmentsCollection =
-      database.collection('driverAssignments');
-    const blogsCollection = database.collection('blogs');
+      database.collection("driverAssignments");
+    const blogsCollection = database.collection("blogs");
+    const commentsCollection = database.collection("comments");
+
     const earningsCollection = database.collection('earnings');
+
 
     // ==== Socket.IO live chat =====
 
@@ -1242,6 +1245,111 @@ async function run() {
       } catch (error) {
         console.error('Error inserting blog:', error);
         res.status(500).json({ message: 'Internal server error' });
+      }
+    });
+
+    //  GET /blogs with sort & search
+    app.get("/blogs", async (req, res) => {
+      const { sort = "newest", category, search = "" } = req.query;
+
+      let sortOption = { date: -1 };
+      if (sort === "oldest") {
+        sortOption = { date: 1 };
+      }
+
+      const query = {};
+      if (category) {
+        query.category = category;
+      }
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: "i" } },
+          { desc: { $regex: search, $options: "i" } },
+          { content: { $regex: search, $options: "i" } },
+        ];
+      }
+
+      try {
+        const blogs = await blogsCollection
+          .find(query)
+          .sort(sortOption)
+          .toArray();
+        res.send(blogs);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch blogs", error });
+      }
+    });
+
+    app.get("/blogs/:id", async (req, res) => {
+      const blog = await blogsCollection.findOne({
+        _id: new ObjectId(req.params.id),
+      });
+      res.send(blog);
+    });
+
+    // Post a comment
+    app.post("/comments", async (req, res) => {
+      try {
+        const comment = req.body;
+        const result = await commentsCollection.insertOne(comment);
+
+        if (result.insertedId) {
+          res.status(201).send({ ...comment, _id: result.insertedId });
+        } else {
+          res.status(500).send({ error: "Failed to insert comment" });
+        }
+      } catch (error) {
+        console.error("Error saving comment:", error);
+        res.status(500).send({ error: "Failed to save comment" });
+      }
+    });
+
+    // Get comments by blog post id
+    app.get("/comments/:blogId", async (req, res) => {
+      const blogId = req.params.blogId;
+      try {
+        const comments = await commentsCollection
+          .find({ blogId: blogId })
+          .sort({ time: -1 })
+          .toArray();
+        res.send(comments);
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        res.status(500).send({ error: "Failed to fetch comments" });
+      }
+    });
+
+    // POST: Add a reply to an existing comment
+    app.post("/replies", async (req, res) => {
+      try {
+        const { commentId, name, email, text, blogId } = req.body;
+
+        if (!commentId || !name || !email || !text || !blogId) {
+          return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const reply = {
+          name,
+          email,
+          text,
+          date: new Date().toISOString(),
+        };
+
+        // Update the comment with the new reply
+        const result = await commentsCollection.updateOne(
+          { _id: new ObjectId(commentId), blogId },
+          { $push: { replies: reply } }
+        );
+
+        if (result.modifiedCount > 0) {
+          res.status(201).json(reply);
+        } else {
+          res.status(500).json({ error: "Failed to post reply" });
+        }
+      } catch (error) {
+        console.error("Error posting reply:", error);
+        res.status(500).json({ error: "Failed to post reply" });
       }
     });
 
