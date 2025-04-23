@@ -237,6 +237,13 @@ async function run() {
       const result = await userInfoCollection.insertOne(newUser);
       res.send(result);
     });
+    // -- Available cars -----
+    app.get("/available-cars", async (req, res) => {
+      const filter = await carsCollection
+        .find({ availability: "available" })
+        .toArray();
+      res.send(filter);
+    });
 
     // cars related filter, sort and searching
 
@@ -251,6 +258,14 @@ async function run() {
       }
     });
 
+    app.get("/carsCount", async (req, res) => {
+      try {
+        const result = await carsCollection.estimatedDocumentCount();
+        res.send({ count: result });
+      } catch (error) {
+        console.log(error);
+      }
+    });
     // car tental types rout
     app.get("/rental-typs", async (req, res) => {
       try {
@@ -474,7 +489,15 @@ async function run() {
             break;
         }
 
-        const cars = await carsCollection.find(query).sort(sort).toArray();
+        // size and page
+        const size = parseInt(search.size);
+        const page = parseInt(search.page);
+        const cars = await carsCollection
+          .find(query)
+          .skip(page * size)
+          .limit(size)
+          .sort(sort)
+          .toArray();
 
         res.send(cars);
       } catch (error) {
@@ -593,6 +616,28 @@ async function run() {
       const result = await carsCollection.insertOne(car);
       res.send(result);
     });
+    // customer booking linechart api
+     app.get("/bookings-overview/:email", async (req, res) => {
+       try {
+         const email = req.params.email;
+         //  const query = { email: email };
+         const bookings = await bookingsCollection
+           .find({ email: email })
+           .toArray();
+
+         const overviewData = bookings.map((booking) => ({
+           carName: booking.carName,
+           price: booking.price,
+         }));
+
+         res.status(200).send(overviewData);
+       } catch (error) {
+         console.error("Error fetching booking overview:", error);
+         res
+           .status(500)
+           .send({ message: "Failed to fetch booking overview data" });
+       }
+     });
 
     // Booking related APIs
     app.post("/book-auto", async (req, res) => {
@@ -606,9 +651,23 @@ async function run() {
       res.send(result);
     });
 
+    // Delete booking by ID
+    app.delete("/bookings/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await bookingsCollection.deleteOne(query);
+        if (result.deletedCount === 0) {
+          return res.status(404).send({ message: "Booking not found" });
+        }
+        res.send({ message: "Booking deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting booking:", error);
+        res.status(500).send({ message: "Failed to delete booking" });
+      }
+    });
+
     // get all bookings
-
-
     app.get("/all-booking", async (req, res) => {
       const bookings = await bookingsCollection.find().toArray();
       res.send(bookings);
@@ -646,6 +705,8 @@ async function run() {
     });
 
     //review related api
+    
+
 
     // review get api
     app.get("/car/review", async (req, res) => {
@@ -848,6 +909,7 @@ async function run() {
           driverEmail: driverEmail,
           carName: booking.carName,
           carBrand: booking.carBrand,
+          carImage: booking.carImage,
           customerName: booking.fullName,
           customerEmail: booking.email,
           customerPhone: booking.phone,
