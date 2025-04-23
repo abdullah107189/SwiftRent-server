@@ -237,6 +237,13 @@ async function run() {
       const result = await userInfoCollection.insertOne(newUser);
       res.send(result);
     });
+    // -- Available cars -----
+    app.get("/available-cars", async (req, res) => {
+      const filter = await carsCollection
+        .find({ availability: "available" })
+        .toArray();
+      res.send(filter);
+    });
 
     // cars related filter, sort and searching
 
@@ -609,6 +616,28 @@ async function run() {
       const result = await carsCollection.insertOne(car);
       res.send(result);
     });
+    // customer booking linechart api
+     app.get("/bookings-overview/:email", async (req, res) => {
+       try {
+         const email = req.params.email;
+         //  const query = { email: email };
+         const bookings = await bookingsCollection
+           .find({ email: email })
+           .toArray();
+
+         const overviewData = bookings.map((booking) => ({
+           carName: booking.carName,
+           price: booking.price,
+         }));
+
+         res.status(200).send(overviewData);
+       } catch (error) {
+         console.error("Error fetching booking overview:", error);
+         res
+           .status(500)
+           .send({ message: "Failed to fetch booking overview data" });
+       }
+     });
 
     // Booking related APIs
     app.post("/book-auto", async (req, res) => {
@@ -676,6 +705,8 @@ async function run() {
     });
 
     //review related api
+    
+
 
     // review get api
     app.get("/car/review", async (req, res) => {
