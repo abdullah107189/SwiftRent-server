@@ -180,6 +180,36 @@ async function run() {
         res.status(500).send({ message: 'Server error', error: error.message });
       }
     });
+
+    // PATCH /users/active/:uid
+    app.patch('/users/active/:uid', async (req, res) => {
+      const uid = req.params.uid;
+      const { isActive } = req.body;
+
+      console.log('Received UID:', uid);
+      console.log('New isActive status:', isActive);
+
+      try {
+        const result = await userInfoCollection.updateOne(
+          { 'userInfo.uid': uid },
+          {
+            $set: {
+              'userInfo.isActive': isActive,
+            },
+          }
+        );
+
+        if (result.modifiedCount > 0) {
+          res.send({ success: true, message: 'User status updated.' });
+        } else {
+          res.status(404).send({ success: false, message: 'User not found.' });
+        }
+      } catch (error) {
+        console.error('Error updating user status:', error.message);
+        res.status(500).send({ success: false, error: error.message });
+      }
+    });
+
     //customers role api
     app.get('/customers/:role', async (req, res) => {
       try {
