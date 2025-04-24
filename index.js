@@ -29,7 +29,9 @@ app.use(express.json());
 const { MongoClient, ServerApiVersion } = require("mongodb");
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
-// const uri = "mongodb://localhost:27017/";
+
+// const uri = 'mongodb://localhost:27017/';
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -630,6 +632,7 @@ async function run() {
         res.send({ message: "Last login updated successfully" });
       } catch (error) {
         res.status(500).send({ message: "Internal Server Error" });
+
       }
     });
     // update active status
@@ -1362,6 +1365,26 @@ async function run() {
         _id: new ObjectId(req.params.id),
       });
       res.send(blog);
+    });
+
+    // DELETE /blogs/:id
+    app.delete("/blogs/:id", async (req, res) => {
+      try {
+        const result = await blogsCollection.deleteOne({
+          _id: new ObjectId(req.params.id),
+        });
+
+        if (result.deletedCount === 1) {
+          res.send({ success: true, message: "Blog deleted successfully." });
+        } else {
+          res.status(404).send({ success: false, message: "Blog not found." });
+        }
+      } catch (error) {
+        console.error("Error deleting blog:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to delete blog." });
+      }
     });
 
     // Post a comment
