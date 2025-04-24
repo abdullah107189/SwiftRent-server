@@ -939,6 +939,26 @@ async function run() {
       res.send(blog);
     });
 
+    // DELETE /blogs/:id
+    app.delete("/blogs/:id", async (req, res) => {
+      try {
+        const result = await blogsCollection.deleteOne({
+          _id: new ObjectId(req.params.id),
+        });
+
+        if (result.deletedCount === 1) {
+          res.send({ success: true, message: "Blog deleted successfully." });
+        } else {
+          res.status(404).send({ success: false, message: "Blog not found." });
+        }
+      } catch (error) {
+        console.error("Error deleting blog:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to delete blog." });
+      }
+    });
+
     // Post a comment
     app.post("/comments", async (req, res) => {
       try {
