@@ -217,7 +217,10 @@ async function run() {
       try {
         const role = req.params.role;
         const query = { "userInfo.role": role };
-        const result = await userInfoCollection.find(query).toArray();
+        const result = await userInfoCollection
+          .find(query)
+          .sort({ isActive: -1 })
+          .toArray();
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
@@ -230,7 +233,10 @@ async function run() {
       try {
         const role = req.params.role;
         const query = { "userInfo.role": role };
-        const result = await userInfoCollection.find(query).toArray();
+        const result = await userInfoCollection
+          .find(query)
+          .sort({ isActive: -1 })
+          .toArray();
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
@@ -632,9 +638,11 @@ async function run() {
     // update active status
     app.patch("/changeActiveState", async (req, res) => {
       const { status, email } = req.query;
+
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
+
       const isFind = await userInfoCollection.findOne({
         "userInfo.email": email,
       });
@@ -643,27 +651,27 @@ async function run() {
         return res.status(404).json({ message: "User not found" });
       }
 
-      if (isFind) {
-        if (status == "true") {
-          userInfoCollection.updateOne(
-            { "userInfo.email": email },
-            {
-              $set: {
-                isActive: true,
-              },
-            }
-          );
-        } else {
-          userInfoCollection.updateMany(
-            { "userInfo.email": email },
-            {
-              $set: {
-                isActive: false,
-              },
-            }
-          );
-        }
-        res.status(500).send({ message: "Internal Server Error" });
+      try {
+        const updateResult =
+          status === "true"
+            ? await userInfoCollection.updateOne(
+                { "userInfo.email": email },
+                { $set: { isActive: true } }
+              )
+            : await userInfoCollection.updateOne(
+                { "userInfo.email": email },
+                { $set: { isActive: false } }
+              );
+
+        return res.status(200).json({
+          message: `User status updated to ${
+            status === "true" ? "Active" : "Inactive"
+          }`,
+          result: updateResult,
+        });
+      } catch (error) {
+        console.error("Update failed:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
       }
     });
 
