@@ -29,7 +29,9 @@ app.use(express.json());
 const { MongoClient, ServerApiVersion } = require("mongodb");
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
+
 // const uri = 'mongodb://localhost:27017/';
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -162,6 +164,7 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch users" });
       }
     });
+
     // user role api
     app.get("/users/role/:email", async (req, res) => {
       try {
@@ -623,8 +626,47 @@ async function run() {
         res.send({ message: "Last login updated successfully" });
       } catch (error) {
         res.status(500).send({ message: "Internal Server Error" });
+
       }
     });
+    // update active status
+    app.patch("/changeActiveState", async (req, res) => {
+      const { status, email } = req.query;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      const isFind = await userInfoCollection.findOne({
+        "userInfo.email": email,
+      });
+
+      if (!isFind) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (isFind) {
+        if (status == "true") {
+          userInfoCollection.updateOne(
+            { "userInfo.email": email },
+            {
+              $set: {
+                isActive: true,
+              },
+            }
+          );
+        } else {
+          userInfoCollection.updateMany(
+            { "userInfo.email": email },
+            {
+              $set: {
+                isActive: false,
+              },
+            }
+          );
+        }
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     //car detelt api
     app.delete("/cars/:id", async (req, res) => {
       try {
