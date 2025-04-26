@@ -349,7 +349,7 @@ async function run() {
     // get total selle
     app.get('/total-sales', async (req, res) => {
       try {
-        const successBookings = await bookingsCollection
+        const successBookings = await paymentsCollection
           .find({ paymentStatus: 'Success' })
           .toArray();
         const totalSell = successBookings.reduce(
