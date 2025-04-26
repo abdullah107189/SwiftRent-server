@@ -28,9 +28,9 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
 
-const uri = 'mongodb://localhost:27017/';
+// const uri = 'mongodb://localhost:27017/';
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -346,7 +346,7 @@ async function run() {
       }
     });
 
-    // get total selle
+    // get total selle functionality
     app.get('/total-sales', async (req, res) => {
       try {
         const successBookings = await paymentsCollection
@@ -362,6 +362,12 @@ async function run() {
         console.error(error);
         res.status(500).json({ message: 'Server Error' });
       }
+    });
+
+    //total order
+    app.get('/total-orders', async (req, res) => {
+      const result = await paymentsCollection.find().toArray();
+      res.send(result);
     });
 
     //
