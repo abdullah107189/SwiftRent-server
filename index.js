@@ -628,11 +628,38 @@ async function run() {
       }
     });
 
-    
+    // user unblock api
+    app.patch("/unblock-user/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const result = await userInfoCollection.updateOne(
+          { "userInfo.email": email },
+          { $set: { isBlock: false } }
+        );
+        if (result.modifiedCount > 0) {
+          res.send({ message: "User unblocked successfully" });
+        } else {
+          res.status(404).send({ message: "User not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Server error", error: error.message });
+      }
+    });
 
     app.patch("/update-last-login", async (req, res) => {
       try {
         const { email } = req.body;
+        const user = await userInfoCollection.findOne({
+          "userInfo.email": email,
+        });
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        if (user.isBlock) {
+          return res.status(403).send({
+            message: "Your account is blocked. Please contact admin.",
+          });
+        }
         // Update lastLogin field
         const result = await userInfoCollection.updateOne(
           { "userInfo.email": email },
