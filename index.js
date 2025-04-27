@@ -406,6 +406,34 @@ async function run() {
     });
 
     //
+
+    // Category Distribution Route
+    app.get('/category-distribution', async (req, res) => {
+      try {
+        const payments = await paymentsCollection.find().toArray();
+
+        const categoryCount = {};
+
+        payments.forEach(booking => {
+          const category = booking.carBrand;
+          if (!categoryCount[category]) {
+            categoryCount[category] = 0;
+          }
+          categoryCount[category] += booking.price;
+        });
+
+        const formattedData = Object.keys(categoryCount).map(category => ({
+          name: category,
+          value: categoryCount[category],
+        }));
+
+        res.json(formattedData);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+      }
+    });
+
     app.get('/sales-by-channel', async (req, res) => {
       try {
         const salesByChannel = await bookingsCollection
