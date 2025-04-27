@@ -28,9 +28,9 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
 
-// const uri = 'mongodb://localhost:27017/';
+const uri = 'mongodb://localhost:27017/';
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -279,6 +279,8 @@ async function run() {
       res.send(result);
     });
 
+    //Sales Overview
+
     // cars related filter, sort and searching
 
     app.get('/all-cars', async (req, res) => {
@@ -368,6 +370,39 @@ async function run() {
     app.get('/total-orders', async (req, res) => {
       const result = await paymentsCollection.find().toArray();
       res.send(result);
+    });
+
+    // Sales Overview Route
+    app.get('/sales-overview', async (req, res) => {
+      try {
+        const payments = await paymentsCollection.find().toArray();
+
+        // Group sales by month
+        const salesData = {};
+
+        payments.forEach(booking => {
+          const date = new Date(booking.paymentTime);
+          const monthName = date.toLocaleString('default', {
+            month: 'short',
+          });
+
+          if (!salesData[monthName]) {
+            salesData[monthName] = 0;
+          }
+          salesData[monthName] += booking.price;
+        });
+
+        // Format data for frontend
+        const formattedData = Object.keys(salesData).map(month => ({
+          name: month,
+          sales: salesData[month],
+        }));
+
+        res.json(formattedData);
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
     });
 
     //
