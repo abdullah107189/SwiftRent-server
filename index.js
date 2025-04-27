@@ -637,6 +637,17 @@ async function run() {
     app.patch('/update-last-login', async (req, res) => {
       try {
         const { email } = req.body;
+        const user = await userInfoCollection.findOne({
+          'userInfo.email': email,
+        });
+        if (!user) {
+          return res.status(404).send({ message: 'User not found' });
+        }
+        if (user.isBlock) {
+          return res.status(403).send({
+            message: 'Your account is blocked. Please contact admin.',
+          });
+        }
         // Update lastLogin field
         const result = await userInfoCollection.updateOne(
           { 'userInfo.email': email },
