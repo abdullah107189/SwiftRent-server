@@ -324,7 +324,16 @@ async function run() {
         res.status(500).send({ message: 'Failed to fetch cars' });
       }
     });
-
+    // customers booking data 
+    app.get('/customers-booking', async (req, res) => {
+      try {
+        const customers = await bookingsCollection.find().toArray()
+        res.send(customers)
+      } catch (error) {
+         console.error('Error fetching cars:', error);
+         res.status(500).send({ message: 'Failed to fetch cars' });
+      }
+    })
     // -----
     app.get('/category-distribution', async (req, res) => {
       try {
