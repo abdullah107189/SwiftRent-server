@@ -28,9 +28,9 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
 
-// const uri = 'mongodb://localhost:27017/';
+const uri = 'mongodb://localhost:27017/';
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -279,9 +279,9 @@ async function run() {
       res.send(result);
     });
     // -- Available cars -----
-    app.get("/available-cars", async (req, res) => {
+    app.get('/available-cars', async (req, res) => {
       const filter = await carsCollection
-        .find({ availability: "available" })
+        .find({ availability: 'available' })
         .toArray();
       res.send(filter);
     });
@@ -459,7 +459,7 @@ async function run() {
               },
             },
             {
-              $sort: { value: -1 }, // Optional: highest to lowest
+              $sort: { value: -1 },
             },
           ])
           .toArray();
@@ -674,16 +674,23 @@ async function run() {
     app.patch('/cars-update/:id', async (req, res) => {
       const id = req.params.id;
       const carDataUpdate = req.body;
+
+      // Remove _id field if present in the update object
+      if (carDataUpdate._id) {
+        delete carDataUpdate._id;
+      }
+
       try {
-        const result = await carsCollection.updateOne({
-          _id: new ObjectId(id),
-        });
-        {
-          $set: carDataUpdate;
-        }
+        const result = await carsCollection.updateOne(
+          { _id: new ObjectId(id) }, // filter by _id
+          { $set: carDataUpdate } // update fields
+        );
         res.send(result);
       } catch (error) {
-        res.status(500).send({ message: 'Failed to fetch car details', error });
+        console.error('Failed to update car details:', error);
+        res
+          .status(500)
+          .send({ message: 'Failed to update car details', error });
       }
     });
 
@@ -797,27 +804,27 @@ async function run() {
       res.send(result);
     });
     // customer booking linechart api
-     app.get("/bookings-overview/:email", async (req, res) => {
-       try {
-         const email = req.params.email;
-         //  const query = { email: email };
-         const bookings = await bookingsCollection
-           .find({ email: email })
-           .toArray();
+    app.get('/bookings-overview/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        //  const query = { email: email };
+        const bookings = await bookingsCollection
+          .find({ email: email })
+          .toArray();
 
-         const overviewData = bookings.map((booking) => ({
-           carName: booking.carName,
-           price: booking.price,
-         }));
+        const overviewData = bookings.map(booking => ({
+          carName: booking.carName,
+          price: booking.price,
+        }));
 
-         res.status(200).send(overviewData);
-       } catch (error) {
-         console.error("Error fetching booking overview:", error);
-         res
-           .status(500)
-           .send({ message: "Failed to fetch booking overview data" });
-       }
-     });
+        res.status(200).send(overviewData);
+      } catch (error) {
+        console.error('Error fetching booking overview:', error);
+        res
+          .status(500)
+          .send({ message: 'Failed to fetch booking overview data' });
+      }
+    });
 
     //car update api
 
@@ -909,8 +916,6 @@ async function run() {
     });
 
     //review related api
-    
-
 
     // review get api
     app.get('/car/review', async (req, res) => {
