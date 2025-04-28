@@ -422,7 +422,10 @@ async function run() {
     });
 
     //
-
+    app.get('/payments-histry', async (req, res) => {
+      const result = await paymentsCollection.find().toArray();
+      res.send(result);
+    });
     // Category Distribution Route
     app.get('/category-distribution', async (req, res) => {
       try {
