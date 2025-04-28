@@ -324,16 +324,16 @@ async function run() {
         res.status(500).send({ message: 'Failed to fetch cars' });
       }
     });
-    // customers booking data 
+    // customers booking data
     app.get('/customers-booking', async (req, res) => {
       try {
-        const customers = await bookingsCollection.find().toArray()
-        res.send(customers)
+        const customers = await bookingsCollection.find().toArray();
+        res.send(customers);
       } catch (error) {
-         console.error('Error fetching cars:', error);
-         res.status(500).send({ message: 'Failed to fetch cars' });
+        console.error('Error fetching cars:', error);
+        res.status(500).send({ message: 'Failed to fetch cars' });
       }
-    })
+    });
     // -----
     app.get('/category-distribution', async (req, res) => {
       try {
@@ -702,7 +702,11 @@ async function run() {
           .send({ message: 'Failed to update car details', error });
       }
     });
-
+    //
+    app.get('/allCars', async (req, res) => {
+      const result = await carsCollection.find().toArray();
+      res.send(result);
+    });
     // car details api
     app.get('/cars/:id', async (req, res) => {
       try {
