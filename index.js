@@ -28,9 +28,8 @@ app.use(express.json());
 
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
 
-const uri = 'mongodb://localhost:27017/';
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -43,7 +42,7 @@ const client = new MongoClient(uri, {
 
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASSWD;
-const is_live = false; //true for live, false for sandbox
+const is_live = false;
 
 async function run() {
   try {
@@ -163,7 +162,6 @@ async function run() {
         res.status(500).send({ message: 'Failed to fetch users' });
       }
     });
-
     // user role api
     app.get('/users/role/:email', async (req, res) => {
       try {
@@ -215,11 +213,13 @@ async function run() {
     app.get('/customers/:role', async (req, res) => {
       try {
         const role = req.params.role;
+
         const query = { 'userInfo.role': role };
         const result = await userInfoCollection
           .find(query)
           .sort({ isActive: -1 })
           .toArray();
+
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: 'Server error', error: error.message });
@@ -231,11 +231,13 @@ async function run() {
     app.get('/drivers/:role', async (req, res) => {
       try {
         const role = req.params.role;
+
         const query = { 'userInfo.role': role };
         const result = await userInfoCollection
           .find(query)
           .sort({ isActive: -1 })
           .toArray();
+
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: 'Server error', error: error.message });
@@ -799,6 +801,11 @@ async function run() {
       } catch (error) {
         console.error('Update failed:', error);
         return res.status(500).json({ message: 'Internal Server Error' });
+      }
+    });
+
+
+        res.status(500).send({ message: "Internal Server Error" });
       }
     });
 
