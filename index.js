@@ -8,7 +8,9 @@ const moment = require('moment-timezone');
 // const jwt = require("jsonwebtoken");
 // const cookieParser = require("cookie-parser");
 const app = express();
+
 const port =process.env.PORT || 3000;
+
 
 const cors = require('cors');
 const http = require('http');
@@ -214,7 +216,8 @@ async function run() {
       try {
         const role = req.params.role;
 
-        const query = { 'userInfo.role': role };
+        const query = { "userInfo.role": role };
+
         const result = await userInfoCollection
           .find(query)
           .sort({ isActive: -1 })
@@ -232,7 +235,8 @@ async function run() {
       try {
         const role = req.params.role;
 
-        const query = { 'userInfo.role': role };
+        const query = { "userInfo.role": role };
+
         const result = await userInfoCollection
           .find(query)
           .sort({ isActive: -1 })
@@ -281,9 +285,9 @@ async function run() {
       res.send(result);
     });
     // -- Available cars -----
-    app.get('/available-cars', async (req, res) => {
+    app.get("/available-cars", async (req, res) => {
       const filter = await carsCollection
-        .find({ availability: 'available' })
+        .find({ availability: "available" })
         .toArray();
       res.send(filter);
     });
@@ -336,6 +340,18 @@ async function run() {
         res.status(500).send({ message: 'Failed to fetch cars' });
       }
     });
+
+    // customers booking data
+    app.get("/customers-booking", async (req, res) => {
+      try {
+        const customers = await bookingsCollection.find().toArray();
+        res.send(customers);
+      } catch (error) {
+        console.error("Error fetching cars:", error);
+        res.status(500).send({ message: "Failed to fetch cars" });
+      }
+    });
+
     // -----
     app.get('/category-distribution', async (req, res) => {
       try {
@@ -367,10 +383,13 @@ async function run() {
     });
 
     // get total selle functionality
+
+
     app.get('/total-sales', async (req, res) => {
       try {
         const successBookings = await paymentsCollection
           .find({ paymentStatus: 'Success' })
+
           .toArray();
         const totalSell = successBookings.reduce(
           (sum, booking) => sum + booking.price,
@@ -380,28 +399,36 @@ async function run() {
         res.json({ totalSell });
       } catch (error) {
         console.error(error);
+
         res.status(500).json({ message: 'Server Error' });
+
       }
     });
 
     //total order
+
     app.get('/total-orders', async (req, res) => {
+
       const result = await paymentsCollection.find().toArray();
       res.send(result);
     });
 
     // Sales Overview Route
+
     app.get('/sales-overview', async (req, res) => {
+
       try {
         const payments = await paymentsCollection.find().toArray();
 
         // Group sales by month
         const salesData = {};
 
+
         payments.forEach(booking => {
           const date = new Date(booking.paymentTime);
           const monthName = date.toLocaleString('default', {
             month: 'short',
+
           });
 
           if (!salesData[monthName]) {
@@ -411,7 +438,9 @@ async function run() {
         });
 
         // Format data for frontend
+
         const formattedData = Object.keys(salesData).map(month => ({
+
           name: month,
           sales: salesData[month],
         }));
@@ -419,21 +448,26 @@ async function run() {
         res.json(formattedData);
       } catch (error) {
         console.error(error);
+
         res.status(500).json({ error: 'Internal server error' });
       }
     });
 
     //
     app.get('/payments-histry', async (req, res) => {
+
       const result = await paymentsCollection.find().toArray();
       res.send(result);
     });
     // Category Distribution Route
+
     app.get('/category-distribution', async (req, res) => {
+
       try {
         const payments = await paymentsCollection.find().toArray();
 
         const categoryCount = {};
+
 
         payments.forEach(booking => {
           const category = booking.carBrand;
@@ -443,6 +477,7 @@ async function run() {
           categoryCount[category] += booking.price;
         });
 
+
         const formattedData = Object.keys(categoryCount).map(category => ({
           name: category,
           value: categoryCount[category],
@@ -451,11 +486,13 @@ async function run() {
         res.json(formattedData);
       } catch (error) {
         console.error(error);
+
         res.status(500).json({ error: 'Internal Server Error' });
       }
     });
 
     app.get('/sales-by-channel', async (req, res) => {
+
       try {
         const salesByChannel = await bookingsCollection
           .aggregate([
@@ -701,6 +738,7 @@ async function run() {
         );
         res.send(result);
       } catch (error) {
+
         console.error('Failed to update car details:', error);
         res
           .status(500)
@@ -709,6 +747,7 @@ async function run() {
     });
     //
     app.get('/allCars', async (req, res) => {
+
       const result = await carsCollection.find().toArray();
       res.send(result);
     });
@@ -733,6 +772,7 @@ async function run() {
       try {
         const { email } = req.body;
         const user = await userInfoCollection.findOne({
+
           'userInfo.email': email,
         });
         if (!user) {
@@ -808,6 +848,45 @@ async function run() {
         res.status(500).send({ message: "Internal Server Error" });
       }
     });
+    // update active status
+    app.patch("/changeActiveState", async (req, res) => {
+      const { status, email } = req.query;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const isFind = await userInfoCollection.findOne({
+        "userInfo.email": email,
+      });
+
+      if (!isFind) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      try {
+        const updateResult =
+          status === "true"
+            ? await userInfoCollection.updateOne(
+                { "userInfo.email": email },
+                { $set: { isActive: true } }
+              )
+            : await userInfoCollection.updateOne(
+                { "userInfo.email": email },
+                { $set: { isActive: false } }
+              );
+
+        return res.status(200).json({
+          message: `User status updated to ${
+            status === "true" ? "Active" : "Inactive"
+          }`,
+          result: updateResult,
+        });
+      } catch (error) {
+        console.error("Update failed:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
 
     //car detelt api
     app.delete('/cars/:id', async (req, res) => {
@@ -827,7 +906,9 @@ async function run() {
       res.send(result);
     });
     // customer booking linechart api
+
     app.get('/bookings-overview/:email', async (req, res) => {
+
       try {
         const email = req.params.email;
         //  const query = { email: email };
@@ -835,13 +916,16 @@ async function run() {
           .find({ email: email })
           .toArray();
 
+
         const overviewData = bookings.map(booking => ({
+
           carName: booking.carName,
           price: booking.price,
         }));
 
         res.status(200).send(overviewData);
       } catch (error) {
+
         console.error('Error fetching booking overview:', error);
         res
           .status(500)
@@ -1617,9 +1701,10 @@ async function run() {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
-}
-run().catch(console.dir);
 
-server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+  run().catch(console.dir);
+
+  server.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+}
