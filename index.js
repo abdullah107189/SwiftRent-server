@@ -8,7 +8,7 @@ const moment = require("moment-timezone");
 // const jwt = require("jsonwebtoken");
 // const cookieParser = require("cookie-parser");
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
 const cors = require("cors");
 const http = require("http");
@@ -30,6 +30,8 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.ujjks.mongodb.net/?appName=Cluster0`;
 
+// const uri = "mongodb://localhost:27017/";
+
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -41,7 +43,7 @@ const client = new MongoClient(uri, {
 
 const store_id = process.env.STORE_ID;
 const store_passwd = process.env.STORE_PASSWD;
-const is_live = false;
+const is_live = false; //true for live, false for sandbox
 
 async function run() {
   try {
@@ -161,6 +163,7 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch users" });
       }
     });
+
     // user role api
     app.get("/users/role/:email", async (req, res) => {
       try {
@@ -212,13 +215,11 @@ async function run() {
     app.get("/customers/:role", async (req, res) => {
       try {
         const role = req.params.role;
-
         const query = { "userInfo.role": role };
         const result = await userInfoCollection
           .find(query)
           .sort({ isActive: -1 })
           .toArray();
-
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
@@ -230,13 +231,11 @@ async function run() {
     app.get("/drivers/:role", async (req, res) => {
       try {
         const role = req.params.role;
-
         const query = { "userInfo.role": role };
         const result = await userInfoCollection
           .find(query)
           .sort({ isActive: -1 })
           .toArray();
-
         res.send(result);
       } catch (error) {
         res.status(500).send({ message: "Server error", error: error.message });
@@ -1611,10 +1610,9 @@ async function run() {
     // Ensures that the client will close when you finish/error
     // await client.close();
   }
-
-  run().catch(console.dir);
-
-  server.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-  });
 }
+run().catch(console.dir);
+
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
