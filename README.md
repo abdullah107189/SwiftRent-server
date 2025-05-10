@@ -52,22 +52,6 @@ SSL_STORE_ID=your_ssl_store_id
 SSL_STORE_PASS=your_ssl_store_password
 ```
 
----
-
-## 📁 Project Structure
-
-```
-server/
- ┣ controllers/
- ┣ routes/
- ┣ middleware/
- ┣ utils/
- ┣ index.js
- ┗ .env
-```
-
----
-
 ## 👨‍💻 Developed By
 
 Backend team of SwiftRent
